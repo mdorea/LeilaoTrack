@@ -206,6 +206,36 @@ button{cursor:pointer;border:0;background:none;padding:0}
   .numeros{max-width:560px}
   .foto{width:104px;height:104px}
 }
+/* carregando */
+.carregando{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:linear-gradient(170deg,var(--bg1),var(--bg2));transition:opacity .45s ease,visibility .45s}
+.carregando.saindo{opacity:0;visibility:hidden}
+.carregando[hidden]{display:none}
+.car-box{display:flex;flex-direction:column;align-items:center;gap:22px;padding:24px}
+.palco{position:relative;width:132px;height:132px;display:grid;place-items:center}
+.onda{position:absolute;left:50%;top:106px;width:60px;height:16px;margin:-8px 0 0 -30px;border-radius:50%;border:2px solid var(--acc);opacity:0;animation:onda 1.3s cubic-bezier(.2,.7,.3,1) infinite}
+.onda:nth-child(2){animation-delay:.12s;border-color:#B69CFF}
+.onda:nth-child(3){animation-delay:.24s}
+@keyframes onda{0%,38%{transform:scale(.4);opacity:0}42%{opacity:.9}100%{transform:scale(2.6);opacity:0}}
+.base{position:absolute;left:50%;top:100px;width:70px;height:12px;margin-left:-35px;border-radius:6px;background:linear-gradient(90deg,#8C5AFF,#FF8A5B);box-shadow:0 8px 22px rgba(255,138,91,.35);animation:base 1.3s ease-in-out infinite}
+@keyframes base{0%,38%{transform:scaleY(1)}42%{transform:scaleY(.6) scaleX(1.08)}55%,100%{transform:scaleY(1)}}
+.martelo{position:absolute;inset:0;width:132px;height:132px;transform-origin:118px 80px;animation:martelo 1.3s cubic-bezier(.5,0,.3,1) infinite}
+@keyframes martelo{0%{transform:rotate(40deg)}38%{transform:rotate(0deg)}46%{transform:rotate(7deg)}54%{transform:rotate(1deg)}100%{transform:rotate(40deg)}}38%{transform:rotate(8deg)}46%{transform:rotate(-4deg)}60%{transform:rotate(-14deg)}100%{transform:rotate(-58deg)}}
+.faisca{position:absolute;left:50%;top:98px;width:4px;height:4px;border-radius:50%;background:#FFD08A;opacity:0;animation:faisca 1.3s ease-out infinite}
+@keyframes faisca{0%,38%{opacity:0;transform:translate(0,0)}42%{opacity:1}75%,100%{opacity:0;transform:translate(var(--x),var(--y))}}
+.car-marca{font-size:26px;font-weight:700;letter-spacing:-.4px;background:linear-gradient(90deg,var(--tx) 0%,var(--tx) 35%,#FFB38A 50%,var(--tx) 65%,var(--tx) 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:brilho 2.4s linear infinite}
+.car-marca span{color:transparent}
+@keyframes brilho{from{background-position:100% 0}to{background-position:-150% 0}}
+.car-msg{font-size:13px;color:var(--mu);font-weight:500;height:20px;text-align:center;transition:opacity .25s}
+.barra{width:180px;height:4px;border-radius:2px;background:var(--track);overflow:hidden;position:relative}
+.barra i{position:absolute;inset:0;width:40%;border-radius:2px;background:linear-gradient(90deg,#8C5AFF,#FF8A5B);animation:barra 1.4s ease-in-out infinite}
+@keyframes barra{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+/* esqueleto dos cards */
+.esqueleto{display:flex;gap:12px;padding:9px;border-radius:var(--r-card)}
+.esqueleto .f,.esqueleto .l{background:linear-gradient(90deg,var(--glass) 0%,var(--glass2) 50%,var(--glass) 100%);background-size:200% 100%;animation:pele 1.2s linear infinite;border-radius:10px}
+.esqueleto .f{width:88px;height:88px;flex:none;border-radius:13px}
+.esqueleto .ls{flex:1;display:flex;flex-direction:column;gap:9px;padding-top:6px}
+.esqueleto .l{height:11px}
+@keyframes pele{from{background-position:200% 0}to{background-position:-200% 0}}
 /* login */
 .login{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:24px}
 .login[hidden]{display:none}
@@ -220,7 +250,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .tremer{animation:tremer .4s}
 @keyframes tremer{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-select:none}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.barra i{width:100%}}
 </style>
 </head>
 <body>
@@ -283,6 +313,22 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
   <button data-aba="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Ajustes</button>
 </nav>
 
+<div class="carregando" id="carregando">
+  <div class="car-box">
+    <div class="palco" aria-hidden="true">
+      <i class="onda"></i><i class="onda"></i><i class="onda"></i>
+      <div class="base"></div>
+      <i class="faisca" style="--x:-34px;--y:-26px"></i><i class="faisca" style="--x:36px;--y:-22px"></i><i class="faisca" style="--x:-20px;--y:-40px"></i><i class="faisca" style="--x:24px;--y:-42px"></i>
+      <svg class="martelo" viewBox="0 0 132 132"><defs><linearGradient id="gm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B69CFF"/><stop offset="1" stop-color="#FF8A5B"/></linearGradient><linearGradient id="gc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3E3D2"/><stop offset="1" stop-color="#C9A88A"/></linearGradient></defs>
+        <rect x="64" y="76" width="56" height="8" rx="4" fill="url(#gc)"/>
+        <rect x="53" y="58" width="26" height="42" rx="7" fill="url(#gm)"/>
+        <rect x="53" y="64" width="26" height="5" fill="#fff" opacity=".28"/><rect x="53" y="89" width="26" height="5" fill="#fff" opacity=".28"/></svg>
+    </div>
+    <div class="car-marca">Leilão<span>Track</span></div>
+    <div class="barra"><i></i></div>
+    <div class="car-msg" id="car-msg">Preparando seus leilões…</div>
+  </div>
+</div>
 <div class="login" id="login" hidden>
   <form class="login-card vidro" id="form-login" autocomplete="on">
     <div class="marca">
@@ -346,7 +392,7 @@ async function ler(nome,chave){
 function guardarChave(raw,lembrar){const v=btoa(String.fromCharCode(...new Uint8Array(raw)));try{(lembrar?localStorage:sessionStorage).setItem("lt_chave",v)}catch(e){}}
 function chaveGuardada(){try{return localStorage.getItem("lt_chave")||sessionStorage.getItem("lt_chave")}catch(e){return null}}
 function sair(){try{localStorage.removeItem("lt_chave");sessionStorage.removeItem("lt_chave")}catch(e){}location.reload()}
-function mostrarLogin(){document.body.classList.add("travado");$("#login").hidden=false;setTimeout(()=>$("#lg-usuario").focus(),100)}
+function mostrarLogin(){esconderCarregando();document.body.classList.add("travado");$("#login").hidden=false;setTimeout(()=>$("#lg-usuario").focus(),100)}
 async function iniciarProtegido(){
   const g=chaveGuardada();
   if(g){try{const k=await crypto.subtle.importKey("raw",b64d(g),{name:"AES-GCM"},true,["decrypt"]);await ler("estado",k);CHAVE=k;return carregar()}catch(e){}}
@@ -354,11 +400,11 @@ async function iniciarProtegido(){
 }
 document.addEventListener("submit",async e=>{
   if(e.target.id!=="form-login")return;e.preventDefault();
-  const bt=$("#lg-entrar");bt.disabled=true;bt.textContent="Entrando…";$("#lg-erro").textContent="";
+  const bt=$("#lg-entrar");bt.disabled=true;bt.textContent="Entrando…";$("#lg-erro").textContent="";mostrarCarregando("login");
   try{const k=await derivarChave($("#lg-usuario").value,$("#lg-senha").value);await ler("estado",k);
     CHAVE=k;guardarChave(await crypto.subtle.exportKey("raw",k),$("#lg-lembrar").checked);
     $("#login").hidden=true;document.body.classList.remove("travado");$("#lg-senha").value="";carregar();
-  }catch(err){$("#lg-erro").textContent="Usuário ou senha incorretos.";const c=$("#form-login");c.classList.remove("tremer");void c.offsetWidth;c.classList.add("tremer")}
+  }catch(err){$("#carregando").classList.add("saindo");setTimeout(()=>{$("#carregando").hidden=true},450);$("#lg-erro").textContent="Usuário ou senha incorretos.";const c=$("#form-login");c.classList.remove("tremer");void c.offsetWidth;c.classList.add("tremer")}
   bt.disabled=false;bt.textContent="Entrar";
 });
 const FAVS=new Set(LS.get("favs",[]));
@@ -398,6 +444,21 @@ function foto(l,cls=""){
 }
 function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("on"),2200)}
 
+/* ---------------- tela de carregamento ---------------- */
+const MSGS={inicio:["Preparando seus leilões…","Buscando lotes da Frazão…","Consultando o Portal Zuk…","Organizando a Mega Leilões…","Calculando os descontos…"],
+  login:["Conferindo seu acesso…","Abrindo o cofre dos lotes…","Organizando os leilões…"]};
+let _carT=null,_carIni=0;
+function mostrarCarregando(tipo){
+  const c=$("#carregando"),m=$("#car-msg");const lista=MSGS[tipo]||MSGS.inicio;let i=0;
+  c.hidden=false;c.classList.remove("saindo");_carIni=Date.now();m.textContent=lista[0];clearInterval(_carT);
+  _carT=setInterval(()=>{i=(i+1)%lista.length;m.style.opacity=0;setTimeout(()=>{m.textContent=lista[i];m.style.opacity=1},220)},1300);
+}
+function esconderCarregando(){
+  const espera=Math.max(0,900-(Date.now()-_carIni));
+  setTimeout(()=>{const c=$("#carregando");c.classList.add("saindo");clearInterval(_carT);setTimeout(()=>{if(c.classList.contains("saindo"))c.hidden=true},500)},espera);
+}
+function esqueletos(n){return Array.from({length:n},()=>`<div class="esqueleto vidro"><div class="f"></div><div class="ls"><div class="l" style="width:40%"></div><div class="l" style="width:90%"></div><div class="l" style="width:60%"></div><div class="l" style="width:35%;height:15px;margin-top:4px"></div></div></div>`).join("")}
+
 /* ---------------- dados ---------------- */
 async function carregar(silencioso){
   try{
@@ -410,9 +471,9 @@ async function carregar(silencioso){
     }else d=await (await fetch("/api/lotes",{cache:"no-store"})).json();
     S.lotes=d.lotes;S.estado=d.estado;
     for(const l of S.lotes){l._busca=[l.titulo,l.bairro,l.cidade,l.uf,l.endereco,l.codigo,l.id,l.comitente,l.tipo,l.site].join(" ").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();l._enc=l.encerra?dt(l.encerra).getTime():Infinity}
-    aplicarTema();render();
+    aplicarTema();render();esconderCarregando();
     if(S.aba==="ajustes")renderAjustes();
-  }catch(e){if(!silencioso)$("#grade").innerHTML=`<div class="vazio vidro">Não consegui falar com o programa no computador.<br><small>Ele está aberto? Tente de novo em instantes.</small></div>`}
+  }catch(e){esconderCarregando();if(!silencioso)$("#grade").innerHTML=`<div class="vazio vidro">Não consegui falar com o programa no computador.<br><small>Ele está aberto? Tente de novo em instantes.</small></div>`}
 }
 
 function filtrar(base,f,ignorar){
@@ -726,7 +787,7 @@ function renderAjustesNuvem(){
 }
 /* ---------------- início ---------------- */
 aplicarTema();
-$("#grade").innerHTML='<div class="vazio vidro esq">Carregando lotes…</div>';
+$("#grade").innerHTML=esqueletos(6);mostrarCarregando("inicio");
 (async()=>{try{const r=await fetch("/api/estado",{cache:"no-store"});ESTATICO=!r.ok||!(r.headers.get("content-type")||"").includes("json")}catch(e){ESTATICO=true}
   if(ESTATICO)iniciarProtegido();else carregar()})();
 // só baixa os lotes de novo quando o programa terminou uma nova leitura dos sites
