@@ -1,0 +1,5 @@
+{
+  "incluir_veiculos": false,
+  "zuk_intervalo_minutos": 120,
+  "alerta": {"tipos": [], "cidades": [], "ufs": [], "valor_max": 0, "desconto_min": 0}
+}
