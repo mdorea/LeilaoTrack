@@ -814,7 +814,8 @@ async function checarVersao(){
     const atual=document.querySelector('meta[name=versao]').content;if(atual.startsWith("__"))return;
     const h=await (await fetch("index.html?t="+Date.now(),{cache:"no-store"})).text();
     const nova=(h.match(/name="versao" content="([^"]+)"/)||[])[1];
-    if(nova&&nova!==atual&&!folhaAberta)location.replace(location.pathname+"?v="+nova.slice(0,8));
+    let tentou=null;try{tentou=sessionStorage.getItem("lt_versao_tentada")}catch(e){}
+    if(nova&&nova!==atual&&nova!==tentou&&!folhaAberta){try{sessionStorage.setItem("lt_versao_tentada",nova)}catch(e){}location.replace(location.pathname+"?v="+nova.slice(0,8))}
   }catch(e){}
 }
 checarVersao();setInterval(checarVersao,10*60000);
