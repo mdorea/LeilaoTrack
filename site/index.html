@@ -730,7 +730,10 @@ function trocarAba(a){
 
 async function renderAlertas(){
   const box=$("#lista-ev");box.innerHTML='<div class="vazio vidro esq">Carregando…</div>';
-  const ev=ESTATICO?(await eventosEstaticos()).slice(0,200).map(e=>Object.assign({},e,{lote:S.lotes.find(l=>l.id===e.id)})):await (await fetch("/api/eventos")).json();
+  const porId=new Map(S.lotes.map(l=>[l.id,l]));
+  let ev=ESTATICO?(await eventosEstaticos()).map(e=>Object.assign({},e,{lote:porId.get(e.id)})):await (await fetch("/api/eventos")).json();
+  // só mostra eventos de lotes conhecidos; "saiu do site" aparece só para os seus favoritos
+  ev=ev.filter(e=>e.lote&&e.lote.titulo&&(e.tipo!=="saiu"||(porId.get(e.id)||{}).fav)).slice(0,200);
   if(!ev.length){box.innerHTML='<div class="vazio vidro">Ainda sem novidades. A partir da próxima atualização, lotes novos e mudanças de valor, lance ou data aparecem aqui.</div>';return}
   let dia="";const out=[];const nomes={novo:"NOVO",valor:"VALOR",lance:"LANCE",status:"SITUAÇÃO",data:"DATA",saiu:"SAIU"};
   for(const e of ev){

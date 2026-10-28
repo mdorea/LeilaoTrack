@@ -119,7 +119,8 @@ def main():
                  "Sem ele os dados não são publicados, para não ficarem abertos.")
     ant = baixar_anterior("lotes.json", {"lotes": [], "estado": {"sites": {}}})
     eventos = baixar_anterior("eventos.json", [])
-    lotes = {l["id"]: l for l in ant.get("lotes", [])}
+    excluir = set(CFG.get("tipos_excluidos", []))
+    lotes = {l["id"]: l for l in ant.get("lotes", []) if l.get("tipo") not in excluir}
     estado = ant.get("estado", {}) or {}
     sites_info = estado.get("sites", {}) or {}
     pausas = {"Mega": 1.5, "Frazão": 1.5, "Zuk": 4.0}
@@ -206,7 +207,7 @@ def main():
     excluir = set(CFG.get("tipos_excluidos", []))
     for i in [i for i, l in lotes.items() if l.get("tipo") in excluir]:
         del lotes[i]
-    eventos = [e for e in eventos if e.get("id") in lotes or e.get("tipo") == "saiu"]
+    eventos = [e for e in eventos if e.get("id") in lotes]  # só eventos de lotes que ainda existem
     # limpeza: tira lotes encerrados/inativos há mais de 30 dias
     limite = (AGORA - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M")
     for i in [i for i, l in lotes.items()
