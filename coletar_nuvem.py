@@ -145,6 +145,8 @@ def main():
                 lidos, completo = func(http, log)
             if not CFG.get("incluir_veiculos"):
                 lidos = [l for l in lidos if l.get("tipo") != "Veículo"]
+            excluir = set(CFG.get("tipos_excluidos", []))
+            lidos = [l for l in lidos if l.get("tipo") not in excluir]
             primeira_vez = not any(l["site"] == site for l in lotes.values())
             ids = set()
             n_novos = 0
@@ -200,6 +202,11 @@ def main():
             info.update(status="erro", erro=str(e)[:300], quando=AGORA_S)
             log(f"{site}: ERRO {e}\n{traceback.format_exc()}")
 
+    # tira os tipos que você não quer acompanhar (config.json > tipos_excluidos)
+    excluir = set(CFG.get("tipos_excluidos", []))
+    for i in [i for i, l in lotes.items() if l.get("tipo") in excluir]:
+        del lotes[i]
+    eventos = [e for e in eventos if e.get("id") in lotes or e.get("tipo") == "saiu"]
     # limpeza: tira lotes encerrados/inativos há mais de 30 dias
     limite = (AGORA - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M")
     for i in [i for i, l in lotes.items()
