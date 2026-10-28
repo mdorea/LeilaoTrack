@@ -86,7 +86,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .wrap{flex-wrap:wrap;overflow:visible;margin:0;padding:0}
 /* números */
 .numeros{display:grid;grid-template-columns:repeat(3,1fr);border-radius:18px;margin-bottom:18px;overflow:hidden}
-.numeros button{padding:12px 6px;display:flex;align-items:baseline;justify-content:center;gap:6px;font-size:12px;color:var(--mu);font-weight:500}
+.numeros button{padding:12px 4px;display:flex;align-items:baseline;justify-content:center;gap:5px;font-size:12px;white-space:nowrap;color:var(--mu);font-weight:500}
 .numeros b{font-size:20px;color:var(--tx);font-weight:700}
 .numeros button.on{background:var(--glass2)}
 .numeros .n2 b{color:var(--acc2)}.numeros .n3 b{color:var(--hot)}
@@ -198,6 +198,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .esq{animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.5}}
+@media (max-width:400px){.numeros button{font-size:11px}.numeros b{font-size:18px}}
 @media (min-width:900px){
   .app{padding-top:34px}
   .topo{margin-bottom:22px}
