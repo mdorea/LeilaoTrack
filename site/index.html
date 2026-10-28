@@ -61,6 +61,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .marca-txt b{font-size:17px;font-weight:700;letter-spacing:-.2px}
 .marca-txt b span{background:linear-gradient(90deg,#B69CFF,#FF8A5B);-webkit-background-clip:text;background-clip:text;color:transparent}
 [data-tema="claro"] .marca-txt b span{background:linear-gradient(90deg,#6D3FE0,#E26A2C);-webkit-background-clip:text;background-clip:text}
+.link-pericia{margin-left:auto;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;font-size:12.5px;font-weight:600;color:var(--tx);text-decoration:none}
 .marca-txt small{font-size:11.5px;color:var(--mu);font-weight:500}
 /* topo */
 .topo{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
@@ -264,6 +265,7 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
   <div class="marca">
     <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></svg></span>
     <div class="marca-txt"><b>Leilão<span>Track</span></b><small>Todos os leilões. Um só lugar.</small></div>
+    <a class="link-pericia vidro" href="https://claude.ai/artifact/YZeJt47merboVT8gvc4XCz" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Perícia</a>
   </div>
   <header class="topo">
     <div>
@@ -709,6 +711,7 @@ async function abrirLote(id){
     <div class="sec">Histórico</div><div class="eventos" id="eventos-lote"><div class="texto-ajuda">Carregando…</div></div>
     <p class="texto-ajuda" style="margin-top:14px">Edital, matrícula e o lance ficam no site oficial. Confira sempre o edital antes de dar lance.</p>`;
   $("#pe-lote").innerHTML=`<button class="btn-sec vidro" id="fav-lote">${l.fav?"♥ Nos favoritos — avisar mudanças":"♡ Favoritar e me avisar de mudanças"}</button>
+    <a class="btn-sec vidro" style="display:grid;place-items:center;text-decoration:none;color:var(--tx)" href="https://claude.ai/artifact/YZeJt47merboVT8gvc4XCz" target="_blank" rel="noopener">Fazer perícia com os documentos ›</a>
     <a class="btn-grande btn-acc" style="display:grid;place-items:center;text-decoration:none" href="${esc(l.url)}" target="_blank" rel="noopener">Ir para o anúncio oficial ›</a>`;
   $("#fav-lote").onclick=async()=>{await alternarFav(l.id);$("#fav-lote").textContent=l.fav?"♥ Nos favoritos — avisar mudanças":"♡ Favoritar e me avisar de mudanças";const c=document.querySelector(`[data-fav="${CSS.escape(l.id)}"]`);if(c){c.classList.toggle("on",l.fav);c.innerHTML=coracao(l.fav)}};
   $("#corpo-lote").scrollTop=0;abrir("#folha-lote");
