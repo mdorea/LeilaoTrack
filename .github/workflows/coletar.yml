@@ -51,6 +51,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           LT_ACESSO: ${{ secrets.LT_ACESSO }}
         run: python coletar_nuvem.py
+      - name: Marcar versão do app
+        run: sed -i "s/__VERSAO__/${GITHUB_SHA}/" site/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
