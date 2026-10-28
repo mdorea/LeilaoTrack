@@ -127,6 +127,10 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .scrim.on{opacity:1;pointer-events:auto}
 .folha{position:fixed;left:50%;bottom:0;transform:translate(-50%,105%);width:min(640px,100%);max-height:88vh;display:flex;flex-direction:column;border-radius:26px 26px 0 0;background:var(--sheet);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);border:1px solid var(--line);border-bottom:0;transition:transform .32s cubic-bezier(.2,.8,.2,1);z-index:31;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
 .folha.on{transform:translate(-50%,0)}
+.btn-fechar{position:absolute;top:12px;right:14px;z-index:5;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:rgba(15,12,35,.5);color:#fff;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.25);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.btn-fechar:active{transform:scale(.92)}
+.folha .alca{position:relative;z-index:4}
+#folha-filtros .folha-cab,#folha-ordem .folha-cab{padding-right:64px}
 .alca{width:40px;height:4px;border-radius:2px;background:var(--mu2);opacity:.6;margin:10px auto 0;flex:none}
 .folha-cab{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 6px;flex:none}
 .folha-cab h3{margin:0;font-size:20px;font-weight:700}
@@ -347,17 +351,20 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 <div class="scrim" id="scrim"></div>
 <div class="folha" id="folha-filtros" role="dialog" aria-label="Filtros">
   <div class="alca"></div>
+  <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   <div class="folha-cab"><h3>Filtros</h3><button class="link" id="limpar">Limpar tudo</button></div>
   <div class="folha-corpo" id="corpo-filtros"></div>
   <div class="folha-pe"><button class="btn-grande" id="aplicar">Ver lotes</button></div>
 </div>
 <div class="folha" id="folha-ordem" role="dialog" aria-label="Ordenar">
   <div class="alca"></div>
+  <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   <div class="folha-cab"><h3>Ordenar por</h3></div>
   <div class="folha-corpo" id="corpo-ordem"></div>
 </div>
 <div class="folha" id="folha-lote" role="dialog" aria-label="Lote">
   <div class="alca"></div>
+  <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   <div class="folha-corpo" id="corpo-lote"></div>
   <div class="folha-pe" id="pe-lote"></div>
 </div>
@@ -594,16 +601,23 @@ $("#n-fecham").onclick=()=>{S.filtro.fecham=!S.filtro.fecham;S.filtro.novos=fals
 
 /* ---------------- folhas ---------------- */
 let folhaAberta=null;
-function abrir(id){fechar(true);folhaAberta=$(id);folhaAberta.classList.add("on");$("#scrim").classList.add("on");document.body.style.overflow="hidden"}
-function fechar(rapido){if(folhaAberta)folhaAberta.classList.remove("on");folhaAberta=null;$("#scrim").classList.remove("on");document.body.style.overflow=""}
+function abrir(id){
+  fecharReal();folhaAberta=$(id);folhaAberta.style.transform="";folhaAberta.classList.add("on");$("#scrim").classList.add("on");document.body.style.overflow="hidden";
+  // o botão/gesto "voltar" do celular fecha a janela em vez de sair do app
+  if(!(history.state&&history.state.folha))history.pushState({folha:true},"");
+}
+function fecharReal(){if(folhaAberta){folhaAberta.classList.remove("on");folhaAberta.style.transform=""}folhaAberta=null;$("#scrim").classList.remove("on");document.body.style.overflow=""}
+function fechar(){const tinha=!!folhaAberta;fecharReal();if(tinha&&history.state&&history.state.folha)history.back()}
+window.addEventListener("popstate",()=>{if(folhaAberta)fecharReal()});
 $("#scrim").onclick=()=>fechar();
+document.addEventListener("click",e=>{if(e.target.closest("[data-fechar]")){e.preventDefault();fechar()}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")fechar()});
-// arrastar para fechar
+// arrastar para baixo fecha (pela alça, cabeçalho, foto ou quando a lista está no topo)
 document.querySelectorAll(".folha").forEach(f=>{
-  let y0=null;const al=f.querySelector(".alca");const cab=f.querySelector(".folha-cab")||al;
-  [al,cab].forEach(el=>{el.addEventListener("touchstart",e=>{y0=e.touches[0].clientY},{passive:true});
-  el.addEventListener("touchmove",e=>{if(y0==null)return;const d=e.touches[0].clientY-y0;if(d>0)f.style.transform=`translate(-50%,${d}px)`},{passive:true});
-  el.addEventListener("touchend",e=>{const d=e.changedTouches[0].clientY-y0;f.style.transform="";if(d>90)fechar();y0=null})});
+  const corpo=f.querySelector(".folha-corpo");let y0=null,d=0;
+  f.addEventListener("touchstart",e=>{const naAlca=e.target.closest(".alca,.folha-cab,.det-foto");y0=(naAlca||corpo.scrollTop<=0)?e.touches[0].clientY:null;d=0},{passive:true});
+  f.addEventListener("touchmove",e=>{if(y0==null)return;d=e.touches[0].clientY-y0;if(d>0){f.style.transition="none";f.style.transform=`translate(-50%,${d}px)`}else if(d<-10)y0=null},{passive:true});
+  f.addEventListener("touchend",()=>{f.style.transition="";if(y0!=null&&d>110)fechar();else f.style.transform="";y0=null});
 });
 
 /* ---------------- filtros ---------------- */
