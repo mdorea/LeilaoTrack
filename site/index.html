@@ -206,6 +206,20 @@ button{cursor:pointer;border:0;background:none;padding:0}
   .numeros{max-width:560px}
   .foto{width:104px;height:104px}
 }
+/* login */
+.login{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:24px}
+.login[hidden]{display:none}
+.login-card{width:min(380px,100%);border-radius:26px;padding:28px 24px 24px;box-shadow:var(--shadow)}
+.login-card .marca{margin-bottom:22px}
+.login-card h2{margin:0 0 4px;font-size:22px}
+.login-card p{margin:0 0 18px;color:var(--mu);font-size:13px}
+.login-card .campo input{height:48px;font-size:15px}
+.lembrar{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--mu);margin:2px 0 18px;cursor:pointer}
+.lembrar input{width:18px;height:18px;accent-color:var(--acc)}
+.login-erro{color:var(--hot);font-size:12.5px;min-height:18px;margin:-6px 0 10px}
+.tremer{animation:tremer .4s}
+@keyframes tremer{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-select:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -269,6 +283,21 @@ button{cursor:pointer;border:0;background:none;padding:0}
   <button data-aba="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Ajustes</button>
 </nav>
 
+<div class="login" id="login" hidden>
+  <form class="login-card vidro" id="form-login" autocomplete="on">
+    <div class="marca">
+      <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></svg></span>
+      <div class="marca-txt"><b>Leilão<span>Track</span></b><small>Todos os leilões. Um só lugar.</small></div>
+    </div>
+    <h2>Entrar</h2>
+    <p>Acesso restrito. Use o seu usuário e senha.</p>
+    <label class="campo">Usuário<input id="lg-usuario" name="username" autocomplete="username" autocapitalize="none" required></label>
+    <label class="campo">Senha<input id="lg-senha" name="password" type="password" autocomplete="current-password" required></label>
+    <div class="login-erro" id="lg-erro"></div>
+    <label class="lembrar"><input type="checkbox" id="lg-lembrar" checked> Lembrar neste aparelho</label>
+    <button class="btn-grande btn-acc" id="lg-entrar" type="submit">Entrar</button>
+  </form>
+</div>
 <div class="scrim" id="scrim"></div>
 <div class="folha" id="folha-filtros" role="dialog" aria-label="Filtros">
   <div class="alca"></div>
@@ -302,7 +331,36 @@ const ORDENS=[
 const FILTRO0={sites:[],tipos:[],pracas:[],ocup:[],ufs:[],cidades:[],vmin:0,vmax:0,dmin:0,prazo:"",novos:false,fecham:false};
 const VMAX=3000000;
 
-let ESTATICO=false;
+let ESTATICO=false;let CHAVE=null;
+const b64d=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+async function derivarChave(usuario,senha){
+  const a=await (await fetch("dados/acesso.json?t="+Date.now(),{cache:"no-store"})).json();
+  const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(usuario.trim().toLowerCase()+":"+senha),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt:b64d(a.sal),iterations:a.iteracoes,hash:"SHA-256"},base,{name:"AES-GCM",length:256},true,["decrypt"]);
+}
+async function ler(nome,chave){
+  const e=await (await fetch(`dados/${nome}.enc?t=${Date.now()}`,{cache:"no-store"})).json();
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64d(e.iv)},chave||CHAVE,b64d(e.dados));
+  return JSON.parse(await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
+}
+function guardarChave(raw,lembrar){const v=btoa(String.fromCharCode(...new Uint8Array(raw)));try{(lembrar?localStorage:sessionStorage).setItem("lt_chave",v)}catch(e){}}
+function chaveGuardada(){try{return localStorage.getItem("lt_chave")||sessionStorage.getItem("lt_chave")}catch(e){return null}}
+function sair(){try{localStorage.removeItem("lt_chave");sessionStorage.removeItem("lt_chave")}catch(e){}location.reload()}
+function mostrarLogin(){document.body.classList.add("travado");$("#login").hidden=false;setTimeout(()=>$("#lg-usuario").focus(),100)}
+async function iniciarProtegido(){
+  const g=chaveGuardada();
+  if(g){try{const k=await crypto.subtle.importKey("raw",b64d(g),{name:"AES-GCM"},true,["decrypt"]);await ler("estado",k);CHAVE=k;return carregar()}catch(e){}}
+  mostrarLogin();
+}
+document.addEventListener("submit",async e=>{
+  if(e.target.id!=="form-login")return;e.preventDefault();
+  const bt=$("#lg-entrar");bt.disabled=true;bt.textContent="Entrando…";$("#lg-erro").textContent="";
+  try{const k=await derivarChave($("#lg-usuario").value,$("#lg-senha").value);await ler("estado",k);
+    CHAVE=k;guardarChave(await crypto.subtle.exportKey("raw",k),$("#lg-lembrar").checked);
+    $("#login").hidden=true;document.body.classList.remove("travado");$("#lg-senha").value="";carregar();
+  }catch(err){$("#lg-erro").textContent="Usuário ou senha incorretos.";const c=$("#form-login");c.classList.remove("tremer");void c.offsetWidth;c.classList.add("tremer")}
+  bt.disabled=false;bt.textContent="Entrar";
+});
 const FAVS=new Set(LS.get("favs",[]));
 let S={lotes:[],estado:{},filtro:Object.assign({},FILTRO0,LS.get("filtro",{})),ordem:LS.get("ordem","desconto"),busca:"",aba:"inicio",lista:[],mostrados:0,tema:LS.get("tema","auto"),rascunho:null,cidadeBusca:""};
 
@@ -345,7 +403,7 @@ async function carregar(silencioso){
   try{
     let d;
     if(ESTATICO){
-      d=await (await fetch("dados/lotes.json?t="+Date.now(),{cache:"no-store"})).json();
+      d=await ler("lotes");
       const corte=fmtLocal(Date.now()-864e5);
       for(const l of d.lotes){l.fav=FAVS.has(l.id);l.novo=!l.primeira_leitura&&(l.visto||"")>=corte}
       d.estado.nome=LS.get("nome","Márcio");
@@ -585,7 +643,7 @@ async function abrirLote(id){
 function fmtLocal(t){const d=t?new Date(t):new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
 
 let _ev=null,_evT=0;
-async function eventosEstaticos(){if(!_ev||Date.now()-_evT>3e5){_ev=await (await fetch("dados/eventos.json?t="+Date.now())).json();_evT=Date.now()}return _ev}
+async function eventosEstaticos(){if(!_ev||Date.now()-_evT>3e5){_ev=await ler("eventos");_evT=Date.now()}return _ev}
 /* ---------------- abas ---------------- */
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;trocarAba(b.dataset.aba)});
 function trocarAba(a){
@@ -660,18 +718,22 @@ function renderAjustesNuvem(){
     <div class="chips wrap" id="temas">${[["auto","Automático (dia/noite)"],["claro","Claro"],["escuro","Escuro"]].map(([v,t])=>`<button class="chip ${S.tema===v?"on":"vidro"}" data-tema="${v}">${t}</button>`).join("")}</div>
     <label class="campo" style="margin-top:14px">Seu nome na saudação<input id="cfg-nome" value="${esc(LS.get("nome","Márcio"))}"></label>
     <button class="btn-sec vidro" id="salvar-geral">Salvar</button></div>
+  <div class="painel vidro"><h4>Conta</h4><p class="texto-ajuda">O acesso fica lembrado neste aparelho até você sair.</p><button class="btn-sec vidro" id="sair">Sair deste aparelho</button></div>
   <p class="texto-ajuda" style="text-align:center;padding:6px 20px 20px">O LeilãoTrack lê só as listagens públicas da Frazão, Portal Zuk e Mega Leilões. Dar lance é sempre no site oficial.</p>`;
   $("#temas").onclick=e=>{const b=e.target.closest("[data-tema]");if(!b)return;S.tema=b.dataset.tema;LS.set("tema",S.tema);aplicarTema();renderAjustesNuvem()};
+  $("#sair").onclick=sair;
   $("#salvar-geral").onclick=()=>{LS.set("nome",$("#cfg-nome").value.trim());S.estado.nome=$("#cfg-nome").value.trim();aplicarTema();toast("Salvo")};
 }
 /* ---------------- início ---------------- */
 aplicarTema();
 $("#grade").innerHTML='<div class="vazio vidro esq">Carregando lotes…</div>';
-(async()=>{try{const r=await fetch("/api/estado",{cache:"no-store"});ESTATICO=!r.ok||!(r.headers.get("content-type")||"").includes("json")}catch(e){ESTATICO=true}carregar()})();
+(async()=>{try{const r=await fetch("/api/estado",{cache:"no-store"});ESTATICO=!r.ok||!(r.headers.get("content-type")||"").includes("json")}catch(e){ESTATICO=true}
+  if(ESTATICO)iniciarProtegido();else carregar()})();
 // só baixa os lotes de novo quando o programa terminou uma nova leitura dos sites
 async function verificar(){
   aplicarTema();
-  try{const e=await (await fetch(ESTATICO?"dados/estado.json?t="+Date.now():"/api/estado",{cache:"no-store"})).json();if(ESTATICO)e.nome=LS.get("nome","Márcio");
+  if(ESTATICO&&!CHAVE)return;
+  try{const e=ESTATICO?await ler("estado"):await (await fetch("/api/estado",{cache:"no-store"})).json();if(ESTATICO)e.nome=LS.get("nome","Márcio");
     const mudou=e.ultima!==S.estado.ultima;const rodava=S.estado.rodando;S.estado=Object.assign(S.estado,e);
     if(mudou&&!folhaAberta){const y=window.scrollY;await carregar(true);window.scrollTo(0,y);toast("Lotes atualizados")}
     else if(rodava!==e.rodando&&S.aba!=="ajustes")$("#qtd").innerHTML=`${S.lista.length.toLocaleString("pt-BR")} lotes`+(e.rodando?` · <span class="atualizando"><i class="spin"></i>atualizando</span>`:"");

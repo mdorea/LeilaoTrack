@@ -9,6 +9,9 @@ import os
 import sys
 import json
 import time
+import base64
+import gzip
+import hashlib
 import traceback
 import urllib.parse
 import urllib.request
@@ -32,6 +35,34 @@ if os.path.exists(CFG_ARQ):
 
 LOGS = []
 
+# ---- acesso protegido: os dados são publicados criptografados (AES-GCM) ----
+SAL = base64.b64decode(CFG["sal"]) if CFG.get("sal") else b""
+ITER = int(CFG.get("iteracoes", 310000))
+
+
+def chave_de(acesso):
+    usuario, _, senha = acesso.partition(":")
+    frase = f"{usuario.strip().lower()}:{senha}".encode("utf-8")
+    return hashlib.pbkdf2_hmac("sha256", frase, SAL, ITER, dklen=32)
+
+
+ACESSO = os.environ.get("LT_ACESSO", "").strip()
+CHAVE = chave_de(ACESSO) if ACESSO and ":" in ACESSO and SAL else None
+
+
+def cifrar(obj):
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    iv = os.urandom(12)
+    bruto = gzip.compress(json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), 9)
+    ct = AESGCM(CHAVE).encrypt(iv, bruto, None)
+    return {"v": 1, "iv": base64.b64encode(iv).decode(), "dados": base64.b64encode(ct).decode()}
+
+
+def decifrar(env):
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    bruto = AESGCM(CHAVE).decrypt(base64.b64decode(env["iv"]), base64.b64decode(env["dados"]), None)
+    return json.loads(gzip.decompress(bruto).decode("utf-8"))
+
 
 def log(m):
     linha = f"{datetime.now(BR):%d/%m %H:%M:%S}  {m}"
@@ -43,10 +74,10 @@ def baixar_anterior(nome, padrao):
     if not URL_PUBLICADA:
         return padrao
     try:
-        req = urllib.request.Request(f"{URL_PUBLICADA}/dados/{nome}?t={int(time.time())}",
+        req = urllib.request.Request(f"{URL_PUBLICADA}/dados/{nome.replace('.json', '.enc')}?t={int(time.time())}",
                                      headers={"User-Agent": "LeilaoTrack"})
         with urllib.request.urlopen(req, timeout=30) as r:
-            return json.loads(r.read().decode("utf-8"))
+            return decifrar(json.loads(r.read().decode("utf-8")))
     except Exception as e:
         log(f"Sem dados anteriores de {nome} ({e}) — começando do zero")
         return padrao
@@ -83,6 +114,9 @@ def bate_alerta(l):
 
 
 def main():
+    if not CHAVE:
+        sys.exit("ERRO: crie o segredo LT_ACESSO (usuario:senha) em Settings > Secrets and variables > Actions. "
+                 "Sem ele os dados não são publicados, para não ficarem abertos.")
     ant = baixar_anterior("lotes.json", {"lotes": [], "estado": {"sites": {}}})
     eventos = baixar_anterior("eventos.json", [])
     lotes = {l["id"]: l for l in ant.get("lotes", [])}
@@ -177,15 +211,13 @@ def main():
 
     estado = {"ultima": AGORA_S, "sites": sites_info, "proxima": (AGORA + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S"),
               "intervalo": 120, "nuvem": True}
-    with open(os.path.join(SAIDA, "lotes.json"), "w", encoding="utf-8") as f:
-        json.dump({"lotes": list(lotes.values()), "estado": estado, "gerado": AGORA_S}, f, ensure_ascii=False,
-                  separators=(",", ":"))
-    with open(os.path.join(SAIDA, "eventos.json"), "w", encoding="utf-8") as f:
-        json.dump(eventos, f, ensure_ascii=False, separators=(",", ":"))
-    with open(os.path.join(SAIDA, "estado.json"), "w", encoding="utf-8") as f:
-        json.dump(estado, f, ensure_ascii=False)
-    with open(os.path.join(SAIDA, "registro.txt"), "w", encoding="utf-8") as f:
-        f.write("\n".join(LOGS))
+    publicar = {"lotes": {"lotes": list(lotes.values()), "estado": estado, "gerado": AGORA_S},
+                "eventos": eventos, "estado": estado}
+    for nome, obj in publicar.items():
+        with open(os.path.join(SAIDA, nome + ".enc"), "w", encoding="utf-8") as f:
+            json.dump(cifrar(obj), f)
+    with open(os.path.join(SAIDA, "acesso.json"), "w", encoding="utf-8") as f:
+        json.dump({"sal": CFG["sal"], "iteracoes": ITER}, f)
 
     for l in novos_alerta[:15]:
         telegram(f"🏠 <b>Novo lote · {l['site']}</b>\n{l['titulo']}\n{l.get('cidade', '')}/{l.get('uf', '')}\n"

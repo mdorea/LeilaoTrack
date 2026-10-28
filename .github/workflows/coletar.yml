@@ -28,6 +28,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Instalar criptografia
+        run: pip install cryptography
       - id: pages
         uses: actions/configure-pages@v5
       - name: Ler os sites
@@ -35,6 +37,7 @@ jobs:
           URL_PUBLICADA: ${{ steps.pages.outputs.base_url }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          LT_ACESSO: ${{ secrets.LT_ACESSO }}
         run: python coletar_nuvem.py
       - uses: actions/upload-pages-artifact@v3
         with:

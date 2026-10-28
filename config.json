@@ -1,5 +1,13 @@
 {
   "incluir_veiculos": false,
   "zuk_intervalo_minutos": 120,
-  "alerta": {"tipos": [], "cidades": [], "ufs": [], "valor_max": 0, "desconto_min": 0}
+  "alerta": {
+    "tipos": [],
+    "cidades": [],
+    "ufs": [],
+    "valor_max": 0,
+    "desconto_min": 0
+  },
+  "sal": "hkC4QQz8mXP3KVuofw44kw==",
+  "iteracoes": 310000
 }
