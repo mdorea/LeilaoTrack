@@ -119,9 +119,10 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .vazio{padding:50px 20px;text-align:center;color:var(--mu);border-radius:var(--r-card)}
 .mais{height:1px}
 /* barra inferior */
-.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 12px);width:min(560px,calc(100% - 24px));height:60px;border-radius:30px;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;z-index:20;box-shadow:var(--shadow);padding:0 6px}
-.nav button{height:48px;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10.5px;font-weight:500;color:var(--mu)}
-.nav button svg{width:20px;height:20px}
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 12px);width:min(560px,calc(100% - 24px));height:60px;border-radius:30px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;z-index:20;box-shadow:var(--shadow);padding:0 6px}
+.nav button,.nav .nav-link{height:48px;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10.5px;font-weight:500;color:var(--mu);text-decoration:none}
+.nav button svg,.nav .nav-link svg{width:20px;height:20px}
+.nav .nav-link{color:var(--acc2)}
 .nav button.on{color:var(--tx);font-weight:600;background:var(--glass2)}
 /* folhas (sheets) */
 .scrim{position:fixed;inset:0;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .25s;z-index:30}
@@ -265,7 +266,6 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
   <div class="marca">
     <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></svg></span>
     <div class="marca-txt"><b>Leilão<span>Track</span></b><small>Todos os leilões. Um só lugar.</small></div>
-    <a class="link-pericia vidro" href="https://claude.ai/artifact/YZeJt47merboVT8gvc4XCz" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Perícia</a>
   </div>
   <header class="topo">
     <div>
@@ -316,6 +316,7 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
   <button data-aba="inicio" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</button>
   <button data-aba="favoritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Favoritos</button>
   <button data-aba="alertas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg>Alertas</button>
+  <a class="nav-link" href="https://claude.ai/artifact/YZeJt47merboVT8gvc4XCz" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Perícia</a>
   <button data-aba="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Ajustes</button>
 </nav>
 
