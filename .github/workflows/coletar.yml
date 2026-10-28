@@ -8,7 +8,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -25,6 +25,20 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Manter o agendamento ativo
+        # o GitHub pausa agendamentos de repositórios sem commits há 60 dias;
+        # se o último commit tiver mais de 40 dias, faz um commit vazio
+        if: github.event_name == 'schedule'
+        run: |
+          ultimo=$(git log -1 --format=%ct)
+          if [ $(( $(date +%s) - ultimo )) -gt $(( 40*86400 )) ]; then
+            git config user.name "leilaotrack-bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Manter atualizações automáticas ativas"
+            git push
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
