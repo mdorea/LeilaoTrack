@@ -224,6 +224,12 @@ def main():
     for nome, obj in publicar.items():
         with open(os.path.join(SAIDA, nome + ".enc"), "w", encoding="utf-8") as f:
             json.dump(cifrar(obj), f)
+    # configuração privada do app (chave de sincronização dos favoritos), também criptografada
+    gh = os.environ.get("LT_GH_TOKEN", "").strip()
+    if gh:
+        with open(os.path.join(SAIDA, "config.enc"), "w", encoding="utf-8") as f:
+            json.dump(cifrar({"gh_token": gh, "repo": os.environ.get("GITHUB_REPOSITORY", "mdorea/LeilaoTrack"),
+                              "branch": "favoritos", "arquivo": "favoritos.enc"}), f)
     with open(os.path.join(SAIDA, "acesso.json"), "w", encoding="utf-8") as f:
         json.dump({"sal": CFG["sal"], "iteracoes": ITER}, f)
 

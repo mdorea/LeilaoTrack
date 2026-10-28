@@ -50,6 +50,7 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           LT_ACESSO: ${{ secrets.LT_ACESSO }}
+          LT_GH_TOKEN: ${{ secrets.LT_GH_TOKEN }}
         run: python coletar_nuvem.py
       - name: Marcar versão do app
         run: sed -i "s/__VERSAO__/${GITHUB_SHA}/" site/index.html

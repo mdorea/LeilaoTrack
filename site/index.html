@@ -393,12 +393,70 @@ const b64d=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
 async function derivarChave(usuario,senha){
   const a=await (await fetch("dados/acesso.json?t="+Date.now(),{cache:"no-store"})).json();
   const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(usuario.trim().toLowerCase()+":"+senha),"PBKDF2",false,["deriveKey"]);
-  return crypto.subtle.deriveKey({name:"PBKDF2",salt:b64d(a.sal),iterations:a.iteracoes,hash:"SHA-256"},base,{name:"AES-GCM",length:256},true,["decrypt"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt:b64d(a.sal),iterations:a.iteracoes,hash:"SHA-256"},base,{name:"AES-GCM",length:256},true,["encrypt","decrypt"]);
+}
+async function decifrarEnv(e,chave){
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64d(e.iv)},chave||CHAVE,b64d(e.dados));
+  return JSON.parse(await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
 }
 async function ler(nome,chave){
   const e=await (await fetch(`dados/${nome}.enc?t=${Date.now()}`,{cache:"no-store"})).json();
-  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64d(e.iv)},chave||CHAVE,b64d(e.dados));
-  return JSON.parse(await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
+  return decifrarEnv(e,chave);
+}
+const b64e=buf=>{const u=new Uint8Array(buf);let s="";for(let i=0;i<u.length;i+=32768)s+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(s)};
+async function cifrarJS(obj){
+  const gz=await new Response(new Blob([JSON.stringify(obj)]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},CHAVE,gz);
+  return {v:1,iv:b64e(iv),dados:b64e(ct)};
+}
+
+/* ---------- favoritos sincronizados entre aparelhos (arquivo criptografado no ramo "favoritos" do GitHub) ---------- */
+let SYNC=null,favSha=null,favPend=[],favT=null,syncIniciado=false;
+const ghUrl=()=>`https://api.github.com/repos/${SYNC.repo}/contents/${SYNC.arquivo}`;
+const ghH=()=>({Authorization:"Bearer "+SYNC.gh_token,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"});
+async function lerFavsRemoto(){
+  const r=await fetch(`${ghUrl()}?ref=${SYNC.branch}&t=${Date.now()}`,{headers:ghH(),cache:"no-store"});
+  if(r.status===404)return{ids:[],sha:null};
+  if(!r.ok)throw new Error("github "+r.status);
+  const j=await r.json();const d=await decifrarEnv(JSON.parse(atob(j.content.replace(/\n/g,""))));
+  return{ids:d.ids||[],sha:j.sha};
+}
+function aplicarFavs(set){
+  const antes=[...FAVS].sort().join();FAVS.clear();set.forEach(i=>FAVS.add(i));LS.set("favs",[...FAVS]);
+  for(const l of S.lotes)l.fav=FAVS.has(l.id);
+  return antes!==[...FAVS].sort().join();
+}
+async function enviarFavs(ops,t){
+  try{
+    const env=await cifrarJS({ids:[...FAVS],quando:new Date().toISOString()});
+    const r=await fetch(ghUrl(),{method:"PUT",headers:{...ghH(),"Content-Type":"application/json"},
+      body:JSON.stringify({message:"Atualiza favoritos",branch:SYNC.branch,content:btoa(JSON.stringify(env)),...(favSha?{sha:favSha}:{})})});
+    if(r.ok){favSha=(await r.json()).content.sha;return}
+    if((r.status===409||r.status===422)&&t<2){ // outro aparelho salvou antes: junta e tenta de novo
+      const{ids,sha}=await lerFavsRemoto();favSha=sha;const set=new Set(ids);
+      for(const[id,on]of ops)on?set.add(id):set.delete(id);
+      if(aplicarFavs(set)&&S.aba!=="ajustes")render();
+      return enviarFavs(ops,t+1);
+    }
+    toast("Não consegui sincronizar os favoritos");
+  }catch(e){toast("Sem conexão: favoritos salvos só neste aparelho por enquanto")}
+}
+function agendarEnvio(id,on){favPend.push([id,on]);clearTimeout(favT);favT=setTimeout(()=>{const ops=favPend.splice(0);enviarFavs(ops,0)},1200)}
+async function baixarFavs(){
+  if(!SYNC||favPend.length)return;
+  try{const{ids,sha}=await lerFavsRemoto();if(favPend.length)return;favSha=sha;if(aplicarFavs(new Set(ids))&&S.aba!=="ajustes")render()}catch(e){}
+}
+async function iniciarSync(){
+  try{const c=await ler("config");if(c&&c.gh_token)SYNC=c}catch(e){}
+  if(!SYNC)return;
+  try{
+    const{ids,sha}=await lerFavsRemoto();favSha=sha;const set=new Set(ids);
+    const soAqui=[...FAVS].filter(i=>!set.has(i)); // primeira vez neste aparelho: junta o que já estava favoritado aqui
+    soAqui.forEach(i=>set.add(i));
+    if(aplicarFavs(set))render();
+    if(soAqui.length||!sha)enviarFavs(soAqui.map(i=>[i,true]),0);
+  }catch(e){}
 }
 function guardarChave(raw,lembrar){const v=btoa(String.fromCharCode(...new Uint8Array(raw)));try{(lembrar?localStorage:sessionStorage).setItem("lt_chave",v)}catch(e){}}
 function chaveGuardada(){try{return localStorage.getItem("lt_chave")||sessionStorage.getItem("lt_chave")}catch(e){return null}}
@@ -406,7 +464,7 @@ function sair(){try{localStorage.removeItem("lt_chave");sessionStorage.removeIte
 function mostrarLogin(){esconderCarregando();document.body.classList.add("travado");$("#login").hidden=false;setTimeout(()=>$("#lg-usuario").focus(),100)}
 async function iniciarProtegido(){
   const g=chaveGuardada();
-  if(g){try{const k=await crypto.subtle.importKey("raw",b64d(g),{name:"AES-GCM"},true,["decrypt"]);await ler("estado",k);CHAVE=k;return carregar()}catch(e){}}
+  if(g){try{const k=await crypto.subtle.importKey("raw",b64d(g),{name:"AES-GCM"},true,["encrypt","decrypt"]);await ler("estado",k);CHAVE=k;return carregar()}catch(e){}}
   mostrarLogin();
 }
 document.addEventListener("submit",async e=>{
@@ -481,6 +539,7 @@ async function carregar(silencioso){
       d.estado.nome=LS.get("nome","Márcio");
     }else d=await (await fetch("/api/lotes",{cache:"no-store"})).json();
     S.lotes=d.lotes;S.estado=d.estado;
+    if(ESTATICO&&!syncIniciado){syncIniciado=true;iniciarSync()}
     for(const l of S.lotes){l._busca=[l.titulo,l.bairro,l.cidade,l.uf,l.endereco,l.codigo,l.id,l.comitente,l.tipo,l.site].join(" ").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();l._enc=l.encerra?dt(l.encerra).getTime():Infinity}
     aplicarTema();render();esconderCarregando();
     if(S.aba==="ajustes")renderAjustes();
@@ -594,7 +653,7 @@ $("#grade").addEventListener("click",async e=>{
 async function alternarFav(id){
   const l=S.lotes.find(x=>x.id===id);if(!l)return;l.fav=!l.fav;
   toast(l.fav?"Adicionado aos favoritos":"Removido dos favoritos");
-  if(ESTATICO){l.fav?FAVS.add(id):FAVS.delete(id);LS.set("favs",[...FAVS])}
+  if(ESTATICO){l.fav?FAVS.add(id):FAVS.delete(id);LS.set("favs",[...FAVS]);if(SYNC)agendarEnvio(id,l.fav)}
   else await fetch("/api/favorito",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,on:l.fav})});
   if(S.aba==="favoritos")render();
 }
@@ -796,7 +855,7 @@ function renderAjustesNuvem(){
   <div class="painel vidro"><h4>Instalar no celular</h4>
     <p class="texto-ajuda">Abra este mesmo endereço no celular e toque em <b>Compartilhar › Adicionar à Tela de Início</b> (iPhone) ou <b>⋮ › Adicionar à tela inicial</b> (Android).</p>
     <div class="end-rede">${esc(location.href.split("#")[0].split("?")[0])}</div>
-    <p class="texto-ajuda">Os favoritos ficam salvos em cada aparelho.</p></div>
+    <p class="texto-ajuda">${SYNC?"<b>Favoritos sincronizados</b> entre todos os aparelhos em que você entrar.":"Os favoritos ficam salvos só neste aparelho."}</p></div>
   <div class="painel vidro"><h4>Aparência</h4>
     <div class="chips wrap" id="temas">${[["auto","Automático (dia/noite)"],["claro","Claro"],["escuro","Escuro"]].map(([v,t])=>`<button class="chip ${S.tema===v?"on":"vidro"}" data-tema="${v}">${t}</button>`).join("")}</div>
     <label class="campo" style="margin-top:14px">Seu nome na saudação<input id="cfg-nome" value="${esc(LS.get("nome","Márcio"))}"></label>
@@ -829,6 +888,7 @@ $("#grade").innerHTML=esqueletos(6);mostrarCarregando("inicio");
 async function verificar(){
   aplicarTema();
   if(ESTATICO&&!CHAVE)return;
+  if(ESTATICO)baixarFavs();
   try{const e=ESTATICO?await ler("estado"):await (await fetch("/api/estado",{cache:"no-store"})).json();if(ESTATICO)e.nome=LS.get("nome","Márcio");
     const mudou=e.ultima!==S.estado.ultima;const rodava=S.estado.rodando;S.estado=Object.assign(S.estado,e);
     if(mudou&&!folhaAberta){const y=window.scrollY;await carregar(true);window.scrollTo(0,y);toast("Lotes atualizados")}
