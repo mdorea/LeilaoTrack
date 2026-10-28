@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Leilao Track — coleta na nuvem (GitHub Actions).
+"""LeilãoTrack — coleta na nuvem (GitHub Actions).
 
 A cada execução: baixa os dados publicados da última vez, lê os sites,
 registra o que mudou e grava a pasta `site/dados/` para ser publicada.
@@ -192,7 +192,7 @@ def main():
                  f"<b>{brl(l.get('valor'))}</b>" + (f"  (-{l['desconto']}%)" if l.get("desconto") else "") +
                  f"\n{l['url']}")
     if len(novos_alerta) > 15:
-        telegram(f"…e mais {len(novos_alerta) - 15} lotes novos no Leilao Track.")
+        telegram(f"…e mais {len(novos_alerta) - 15} lotes novos no LeilãoTrack.")
     log(f"Pronto: {sum(1 for l in lotes.values() if l.get('ativo'))} lotes ativos")
 
 

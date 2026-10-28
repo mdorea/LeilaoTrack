@@ -1,4 +1,4 @@
-# Leilao Track
+# LeilãoTrack
 
 Acompanha os lotes da Frazão Leilões, Portal Zuk e Mega Leilões num lugar só.
 A leitura roda no GitHub a cada 2 horas e o painel fica publicado no GitHub Pages.
