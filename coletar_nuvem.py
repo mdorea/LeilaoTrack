@@ -121,6 +121,12 @@ def main():
     eventos = baixar_anterior("eventos.json", [])
     excluir = set(CFG.get("tipos_excluidos", []))
     lotes = {l["id"]: l for l in ant.get("lotes", []) if l.get("tipo") not in excluir}
+    # conserta lotes antigos da Frazão gravados sem cidade/UF
+    for l in lotes.values():
+        if l.get("site") == "Frazão" and not l.get("uf"):
+            loc = coletores.frazao_local(l.get("titulo"))
+            if loc:
+                l["bairro"], l["cidade"], l["uf"] = loc
     estado = ant.get("estado", {}) or {}
     sites_info = estado.get("sites", {}) or {}
     pausas = {"Mega": 1.5, "Frazão": 1.5, "Zuk": 4.0}
