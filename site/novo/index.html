@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://generativelanguage.googleapis.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'; upgrade-insecure-requests">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>LeilãoTrack</title>
+<meta name="theme-color" content="#1E1640">
+<meta name="versao" content="__VERSAO__">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LeilãoTrack">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="icone-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="fundo"></div>
+
+<main class="app" id="app" hidden>
+  <div class="marca">
+    <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></svg></span>
+    <div class="marca-txt"><b>Leilão<span>Track</span></b><small>Todos os leilões. Um só lugar.</small></div>
+  </div>
+  <header class="topo">
+    <div>
+      <div class="data" id="data"></div>
+      <h1 class="saudacao" id="saudacao">Olá</h1>
+    </div>
+    <div class="astro" id="astro" aria-hidden="true"></div>
+  </header>
+
+  <section id="aba-inicio">
+    <div class="linha-busca">
+      <label class="busca vidro">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="busca" type="search" placeholder="Buscar bairro, cidade, nº do lote…" autocomplete="off" maxlength="80" aria-label="Buscar">
+      </label>
+      <button class="btn-ico vidro" id="btn-filtros" aria-label="Filtros">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+        <span class="badge" id="badge" hidden>0</span>
+      </button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="numeros">
+      <button class="tile t1 vidro" id="n-ativos"><i class="tile-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></i><span><b id="c-ativos">–</b><small>ativos</small></span></button>
+      <button class="tile t2 vidro" id="n-novos"><i class="tile-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg></i><span><b id="c-novos">–</b><small>novos</small></span></button>
+      <button class="tile t3 vidro" id="n-fecham"><i class="tile-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></i><span><b id="c-fecham">–</b><small>fecham 48h</small></span></button>
+      <button class="tile t4 vidro" id="n-top"><i class="tile-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3"/></svg></i><span><b>Top 15</b><small>para você</small></span></button>
+    </div>
+    <div class="cab">
+      <h2><span id="titulo-lista">Lotes</span> <small id="qtd"></small></h2>
+      <button class="ordem vidro" id="btn-ordem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/></svg>
+        <span id="ordem-nome">Maior desconto</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 8h16l-8 9z"/></svg>
+      </button>
+    </div>
+    <div class="top-pref" id="top-pref" hidden><span id="top-pref-txt"></span><button id="top-pref-ajustar">Ajustar</button></div>
+    <div class="grade" id="grade"></div>
+    <div class="mais" id="sentinela"></div>
+  </section>
+
+  <section id="aba-alertas" hidden>
+    <div class="cab"><h2>Alertas <small>seus favoritos e lotes novos do seu perfil</small></h2></div>
+    <div class="chips" id="filtro-ev"></div>
+    <div class="lista-ev" id="lista-ev"></div>
+  </section>
+
+  <section id="aba-pericia" hidden></section>
+  <section id="aba-ajustes" hidden></section>
+  <footer class="rodape" id="rodape-app"></footer>
+</main>
+
+<nav class="nav vidro" id="nav" hidden>
+  <button data-aba="inicio" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</button>
+  <button data-aba="favoritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Favoritos</button>
+  <button data-aba="alertas" style="position:relative"><span class="nav-badge" id="badge-alertas" hidden></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg>Alertas</button>
+  <button data-aba="pericia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Perícia</button>
+  <button data-aba="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Ajustes</button>
+</nav>
+
+<!-- telas de acesso -->
+<div class="tela" id="tela-acesso" hidden>
+  <div class="login-card vidro">
+    <div class="marca">
+      <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></svg></span>
+      <div class="marca-txt"><b>Leilão<span>Track</span></b><small>Todos os leilões. Um só lugar.</small></div>
+    </div>
+
+    <form id="f-entrar" novalidate>
+      <h2>Entrar</h2>
+      <p>Grupo fechado. Use o e-mail e a senha do seu cadastro.</p>
+      <label class="campo">E-mail<input id="e-email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" required></label>
+      <label class="campo olho">Senha<input id="e-senha" type="password" autocomplete="current-password" maxlength="72" required><button type="button" data-olho aria-label="Mostrar senha"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></label>
+      <div class="login-erro" id="e-erro" role="alert"></div>
+      <label class="lembrar"><input type="checkbox" id="e-lembrar" checked> Lembrar neste aparelho</label>
+      <button class="btn-grande btn-acc" type="submit">Entrar</button>
+      <div class="links"><button type="button" data-ir="convite">Recebi um convite</button><button type="button" data-ir="senha">Esqueci a senha</button></div>
+    </form>
+
+    <form id="f-convite" novalidate hidden>
+      <h2 id="c-titulo">Primeiro acesso</h2>
+      <p id="c-sub">Use o e-mail e o código do convite que você recebeu.</p>
+      <label class="campo">E-mail<input id="c-email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" required></label>
+      <label class="campo">Código do convite<input id="c-codigo" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="20" placeholder="XXXX-XXXX-XXXX" required></label>
+      <div id="c-passo2" hidden>
+        <label class="campo olho">Crie uma senha<input id="c-senha" type="password" autocomplete="new-password" minlength="8" maxlength="72"><button type="button" data-olho aria-label="Mostrar senha"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></label>
+        <div class="forca"><i id="c-forca"></i></div>
+        <label class="campo">Repita a senha<input id="c-senha2" type="password" autocomplete="new-password" maxlength="72"></label>
+      </div>
+      <div class="login-erro" id="c-erro" role="alert"></div>
+      <button class="btn-grande btn-acc" type="submit" id="c-botao">Conferir convite</button>
+      <div class="links"><button type="button" data-ir="entrar">Já tenho conta</button></div>
+    </form>
+
+    <form id="f-senha" novalidate hidden>
+      <h2>Nova senha</h2>
+      <p>Peça ao administrador do grupo um código de nova senha. Ele vale por 24 horas.</p>
+      <label class="campo">E-mail<input id="s-email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" required></label>
+      <label class="campo">Código<input id="s-codigo" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="20" placeholder="XXXX-XXXX-XXXX" required></label>
+      <label class="campo olho">Nova senha<input id="s-senha" type="password" autocomplete="new-password" minlength="8" maxlength="72" required><button type="button" data-olho aria-label="Mostrar senha"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></label>
+      <div class="login-erro" id="s-erro" role="alert"></div>
+      <div class="msg-ok" id="s-ok" role="status"></div>
+      <button class="btn-grande btn-acc" type="submit">Salvar nova senha</button>
+      <div class="links"><button type="button" data-ir="entrar">Voltar para entrar</button></div>
+    </form>
+    <p class="rodape" id="rodape-acesso"></p>
+  </div>
+</div>
+
+<div class="tela" id="tela-config" hidden>
+  <div class="login-card vidro">
+    <h2>Site em configuração</h2>
+    <p>Este endereço ainda não foi ligado ao banco de dados. Volte em alguns minutos.</p>
+    <p class="rodape" id="rodape-config"></p>
+  </div>
+</div>
+
+<!-- preferências do Top 15 -->
+<div class="tela" id="tela-pref" hidden>
+  <div class="login-card vidro" style="width:min(460px,100%)">
+    <div class="sec" id="pref-passo" style="margin-top:0">PRIMEIRO ACESSO</div>
+    <h2>Monte seu Top 15</h2>
+    <p>O ranking é refeito a cada leitura dos sites, só com o que interessa a você.</p>
+    <div class="pref-cab"><h4>Estados</h4><button type="button" class="pill-todos" id="pref-todos-uf">Todos os estados</button></div>
+    <div class="grade-uf" id="pref-ufs"></div>
+    <div class="pref-cab"><h4>Tipo de imóvel</h4><button type="button" class="pill-todos" id="pref-todos-tipo">Todos os tipos</button></div>
+    <div class="grade-tipo" id="pref-tipos"></div>
+    <div class="resumo-pref" id="pref-resumo"></div>
+    <div class="login-erro" id="pref-erro" role="alert"></div>
+    <button class="btn-grande btn-acc" id="pref-salvar">Ver meu Top 15</button>
+    <div class="links"><button type="button" id="pref-cancelar" hidden>Cancelar</button></div>
+  </div>
+</div>
+
+<div class="carregando" id="carregando">
+  <div class="car-box">
+    <div class="palco" aria-hidden="true">
+      <i class="onda"></i><i class="onda"></i><i class="onda"></i>
+      <div class="base"></div>
+      <i class="faisca" style="--x:-34px;--y:-26px"></i><i class="faisca" style="--x:36px;--y:-22px"></i><i class="faisca" style="--x:-20px;--y:-40px"></i><i class="faisca" style="--x:24px;--y:-42px"></i>
+      <svg class="martelo" viewBox="0 0 132 132"><defs><linearGradient id="gm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B69CFF"/><stop offset="1" stop-color="#FF8A5B"/></linearGradient><linearGradient id="gc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3E3D2"/><stop offset="1" stop-color="#C9A88A"/></linearGradient></defs>
+        <rect x="64" y="76" width="56" height="8" rx="4" fill="url(#gc)"/>
+        <rect x="53" y="58" width="26" height="42" rx="7" fill="url(#gm)"/>
+        <rect x="53" y="64" width="26" height="5" fill="#fff" opacity=".28"/><rect x="53" y="89" width="26" height="5" fill="#fff" opacity=".28"/></svg>
+    </div>
+    <div class="car-marca">Leilão<span>Track</span></div>
+    <div class="barra"><i></i></div>
+    <div class="car-msg" id="car-msg">Preparando seus leilões…</div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="folha" id="folha-filtros" role="dialog" aria-label="Filtros">
+  <div class="alca"></div>
+  <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="folha-cab"><h3>Filtros</h3><button class="link" id="limpar">Limpar tudo</button></div>
+  <div class="folha-corpo" id="corpo-filtros"></div>
+  <div class="folha-pe"><button class="btn-grande" id="aplicar">Ver lotes</button></div>
+</div>
+<div class="folha" id="folha-ordem" role="dialog" aria-label="Ordenar">
+  <div class="alca"></div>
+  <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="folha-cab"><h3>Ordenar por</h3></div>
+  <div class="folha-corpo" id="corpo-ordem"></div>
+</div>
+<div class="folha" id="folha-lote" role="dialog" aria-label="Lote">
+  <div class="alca"></div>
+  <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="folha-corpo" id="corpo-lote"></div>
+  <div class="folha-pe" id="pe-lote"></div>
+</div>
+<div class="folha" id="folha-calc" role="dialog" aria-label="Calculadora de leilão">
+  <div class="alca"></div>
+  <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="folha-cab" style="padding-right:64px"><h3>Calculadora de leilão</h3></div>
+  <div class="folha-corpo"><p class="texto-ajuda" id="calc-tit" style="margin:0 0 12px"></p>
+    <p class="aviso-caixa neutro" id="calc-fonte" hidden></p>
+    <div id="calc-corpo"></div></div>
+  <div class="folha-pe"><button class="btn-grande" id="calc-salvar">Salvar neste lote</button></div>
+</div>
+<div class="folha" id="folha-ia" role="dialog" aria-label="Minha IA">
+  <div class="alca"></div>
+  <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="folha-cab" style="padding-right:64px"><h3>Minha IA</h3></div>
+  <div class="folha-corpo" id="corpo-ia"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="js/config.js"></script>
+<script src="js/sb.js"></script>
+<script src="js/base.js"></script>
+<script src="js/conta.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/lotes.js"></script>
+<script src="js/ia.js"></script>
+<script src="js/pericia.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+=====================================================================
+  LEILÃOTRACK · VERSÃO MULTIUSUÁRIO · GUIA PASSO A PASSO
+  Desenvolvido com IA · 2026
+=====================================================================
+
+COMO FICA
+---------
+- O site novo fica em:  https://mdorea.github.io/LeilaoTrack/novo/
+- O site atual continua funcionando no endereço de sempre até você
+  decidir trocar (passo 9).
+- A leitura dos sites (Frazão, Zuk, Mega) continua no GitHub a cada
+  2 horas, UMA vez para todo o grupo. Os lotes passam a ficar num
+  arquivo privado do Supabase, que só quem está logado consegue ler.
+- Cada pessoa tem login próprio, favoritos, alertas, preferências do
+  Top 15 e cálculos só dela.
+- A perícia usa a chave de IA de cada pessoa (Claude ou Gemini).
+  A chave fica só no aparelho dela, cifrada. Não passa pelo banco.
+- Custo: R$ 0 por mês (Supabase grátis + GitHub grátis).
+
+Tempo total para você: uns 20 minutos.
+
+O QUE NUNCA FAZER
+-----------------
+- Nunca cole a chave SECRETA do Supabase (service_role ou sb_secret_)
+  em conversa, e-mail, WhatsApp ou no site. Ela só vai num lugar:
+  no segredo SUPABASE_SERVICE_KEY do GitHub (passo 4).
+- A chave PÚBLICA (anon ou publishable) pode ficar no site: quem
+  protege os dados são as regras do banco.
+- Não compartilhe a senha do banco de dados que o Supabase pede ao
+  criar o projeto. Guarde num gerenciador de senhas.
+
+
+---------------------------------------------------------------------
+PASSO 0 · URGENTE: FECHAR UMA PORTA DO SISTEMA ANTIGO (5 min)
+---------------------------------------------------------------------
+A revisão de segurança achou um problema no sistema ANTIGO (o de
+senha única): o token do GitHub usado para sincronizar os favoritos
+era publicado no site, protegido só pela senha "marcio04". Quem
+descobrir essa senha consegue o token e, com ele, mexer no seu
+repositório e roubar as chaves guardadas lá.
+
+Eu já parei de publicar esse arquivo. Falta você invalidar o token
+(isso só você consegue fazer). FAÇA ANTES DO PASSO 4:
+
+1. GitHub > sua foto (canto de cima) > Settings > Developer settings
+   > Personal access tokens > Fine-grained tokens.
+   Apague ("Delete") o token usado para os favoritos do LeilãoTrack.
+2. GitHub > repositório LeilaoTrack > Settings > Secrets and variables
+   > Actions: apague o segredo  LT_GH_TOKEN.
+   (Os favoritos do site antigo passam a ficar só em cada aparelho até
+   a troca para o site novo, que guarda tudo na sua conta.)
+3. Recomendado: Settings > Branches > "Add branch ruleset" (ou "Add
+   rule") para o ramo  main , marcando "Restrict deletions" e "Block
+   force pushes". Isso dificulta qualquer alteração forçada.
+4. Recomendado: ative a verificação em duas etapas (2FA) no GitHub:
+   sua foto > Settings > Password and authentication.
+
+
+---------------------------------------------------------------------
+PASSO 1 · CRIAR O PROJETO NO SUPABASE (5 min)
+---------------------------------------------------------------------
+1. Entre em https://supabase.com e toque em "Start your project".
+   Pode entrar com a sua conta do GitHub.
+2. Toque em "New project".
+   - Name: LeilaoTrack
+   - Database Password: toque em "Generate a password" e GUARDE
+     num lugar seguro (não vamos usar no dia a dia).
+   - Region: South America (São Paulo)
+   - Plano: Free
+3. Toque em "Create new project" e espere uns 2 minutos.
+
+
+---------------------------------------------------------------------
+PASSO 2 · CRIAR AS TABELAS E AS REGRAS DE SEGURANÇA (2 min)
+---------------------------------------------------------------------
+1. No menu da esquerda, abra "SQL Editor".
+2. Toque em "New query".
+3. Abra o arquivo  supabase/schema.sql  do repositório no GitHub
+   (https://github.com/mdorea/LeilaoTrack/blob/main/supabase/schema.sql),
+   toque no botão de copiar ("Copy raw file") e cole tudo no editor.
+4. Toque em "Run". Deve aparecer "Success. No rows returned".
+   (Avisos amarelos dizendo "does not exist, skipping" são normais.)
+
+
+---------------------------------------------------------------------
+PASSO 3 · AJUSTAR O LOGIN (3 min)
+---------------------------------------------------------------------
+Os nomes podem variar um pouco conforme a versão do painel.
+
+1. Menu "Authentication" > "Sign In / Providers" (ou "Providers").
+   - "Allow new users to sign up": DEIXE LIGADO.
+     (Pode parecer estranho, mas é o banco que barra quem não tem
+     convite: sem código válido, a conta nem é criada.)
+   - "Allow anonymous sign-ins": DESLIGADO.
+   - Em "Email":
+       * "Enable Email provider": ligado
+       * "Confirm email": DESLIGADO (o código do convite já confirma
+         que a pessoa é ela; e o e-mail grátis do Supabase só envia
+         para membros da sua equipe)
+       * "Minimum password length": 8
+       * "Password requirements": "Letters and digits" (se aparecer)
+   - Toque em "Save".
+2. Menu "Authentication" > "URL Configuration".
+   - "Site URL":  https://mdorea.github.io/LeilaoTrack/novo/
+   - Toque em "Save".
+
+
+---------------------------------------------------------------------
+PASSO 4 · COLOCAR AS CHAVES NO GITHUB (5 min)
+---------------------------------------------------------------------
+1. No Supabase: engrenagem "Project Settings" > "API Keys"
+   (ou "Data API" / "API").
+   Você vai precisar de 3 coisas:
+   a) Project URL: algo como https://abcdefghijkl.supabase.co
+      (aparece em "Data API" ou no topo da página de API)
+   b) Chave PÚBLICA: "Publishable key" (sb_publishable_...)
+      ou, na aba "Legacy API keys", a "anon public".
+   c) Chave SECRETA: "Secret key" (sb_secret_...)
+      ou, na aba "Legacy API keys", a "service_role" (toque em Reveal).
+
+2. No GitHub: https://github.com/mdorea/LeilaoTrack
+   > Settings > Secrets and variables > Actions > "New repository secret"
+   Crie estes 3 segredos (nome exatamente assim):
+
+     SUPABASE_URL           =  o Project URL (a)
+     SUPABASE_ANON_KEY      =  a chave PÚBLICA (b)
+     SUPABASE_SERVICE_KEY   =  a chave SECRETA (c)
+
+   Se por engano você colocar a chave secreta no SUPABASE_ANON_KEY,
+   a publicação para com erro de propósito, para ela não vazar.
+
+
+---------------------------------------------------------------------
+PASSO 5 · PUBLICAR E FAZER A PRIMEIRA LEITURA (3 min)
+---------------------------------------------------------------------
+1. No GitHub: aba "Actions" > "Atualizar lotes" > "Run workflow"
+   > "Run workflow".
+2. Espere ficar verde (uns 3 a 5 minutos).
+3. Confira no Supabase: menu "Storage" > pasta "privado". Devem
+   aparecer os arquivos  lotes.json.gz  e  versao.json.
+
+
+---------------------------------------------------------------------
+PASSO 6 · CRIAR O SEU ACESSO DE ADMINISTRADOR (2 min)
+---------------------------------------------------------------------
+1. No Supabase, "SQL Editor" > "New query", cole a linha abaixo
+   trocando pelo seu e-mail e nome, e toque em "Run":
+
+   select * from public.instalar_admin('seu-email@exemplo.com', 'Márcio');
+
+2. Vai aparecer um CÓDIGO no formato XXXX-XXXX-XXXX (vale por 2 dias).
+3. Abra https://mdorea.github.io/LeilaoTrack/novo/
+   > "Recebi um convite" > seu e-mail + o código > "Conferir convite"
+   > crie sua senha (mínimo 8 caracteres, letras e números).
+4. Escolha seus estados e tipos de imóvel ("Monte seu Top 15").
+5. Em Ajustes > Minha IA, conecte a sua chave (opcional, para perícia).
+
+
+---------------------------------------------------------------------
+PASSO 7 · CONVIDAR PESSOAS
+---------------------------------------------------------------------
+1. No site novo: Ajustes > "Painel do grupo".
+2. Escreva o NOME (aparece no "Bom dia, João") e o E-MAIL.
+3. Toque em "Gerar convite". Aparece o código e 3 botões:
+   "Copiar mensagem", "Enviar no WhatsApp", "Enviar por e-mail".
+   A mensagem já leva o link pronto: a pessoa abre, cria a senha e entra.
+4. O código vale 7 dias. Se vencer, toque em "Novo código".
+5. Esqueceu a senha? No painel, toque em "Código de senha" ao lado
+   da pessoa e mande o código; ela usa em "Esqueci a senha" (vale 24h).
+6. "Remover" apaga a conta da pessoa e tudo dela.
+
+O que você, como administrador, NÃO vê: chaves de IA, perícias,
+favoritos e cálculos das outras pessoas. Cada um vê só o seu.
+
+
+---------------------------------------------------------------------
+PASSO 8 · O QUE PASSAR PARA QUEM FOR USAR A PERÍCIA
+---------------------------------------------------------------------
+- Claude (melhor qualidade): criar conta em console.anthropic.com,
+  colocar créditos em "Billing" (US$ 5 já dá para várias perícias,
+  cerca de R$ 1 a 2 cada), criar a chave em "API Keys" (começa com
+  sk-ant-) e colar no site em Ajustes > Minha IA.
+  A assinatura Claude Pro/Max NÃO serve como chave de API.
+- Gemini (tem plano grátis): aistudio.google.com > "Get API key" >
+  "Create API key" (começa com AIza) e colar no site.
+- A chave fica só no aparelho. No celular e no PC, cola uma vez em cada.
+- Ao "Sair deste aparelho", a chave e as perícias guardadas ali
+  são apagadas.
+
+
+---------------------------------------------------------------------
+PASSO 9 · QUANDO ESTIVER TUDO CERTO: TROCAR PARA O SITE NOVO
+---------------------------------------------------------------------
+Use o site novo por alguns dias. Quando quiser, me peça para
+"promover o site novo". Eu faço:
+- o endereço principal passa a abrir o site novo;
+- o site antigo e os arquivos criptografados com a senha antiga
+  deixam de ser publicados.
+
+Depois disso, você faz (2 min):
+1. GitHub > Settings > Secrets and variables > Actions:
+   apague LT_ACESSO (a senha única do sistema antigo).
+2. Eu apago o ramo "dados", que guardava a cópia antiga.
+
+
+---------------------------------------------------------------------
+SEGURANÇA: O QUE FOI FEITO
+---------------------------------------------------------------------
+- Acesso só por convite: sem código válido (12 letras/números,
+  ~60 bits de acaso, guardado só como "hash"), o banco recusa criar
+  a conta. 5 tentativas erradas bloqueiam o convite.
+- Regras do banco (RLS) em todas as tabelas: cada pessoa só lê e
+  grava o que é dela. Funções de administrador conferem o papel no
+  próprio banco a cada chamada; esconder o botão não é a proteção.
+- Os lotes ficam num arquivo privado: sem login de membro, nada.
+- Senhas guardadas pelo Supabase com bcrypt; mínimo de 8 caracteres;
+  senhas fáceis (12345678, sequências) são recusadas.
+- Trocar a senha por código encerra as sessões em outros aparelhos.
+- O site não carrega nenhum código de terceiros: as bibliotecas ficam
+  hospedadas no próprio site, e uma política de segurança (CSP)
+  proíbe scripts de fora, "eval" e envio de dados para endereços que
+  não sejam o Supabase, a Anthropic ou o Google.
+- Tudo que vem dos sites de leilão e da IA é tratado como texto: não
+  vira código. O relatório da IA passa por um filtro (DOMPurify) que
+  tira imagens, scripts e links perigosos (proteção contra documentos
+  "envenenados" que tentam enganar a IA).
+- Chave de IA: cifrada no aparelho com uma chave que o navegador não
+  deixa exportar; vai direto para a Anthropic/Google.
+- CPF, CNPJ, telefones e e-mails dos documentos são ocultados antes
+  de ir para a IA.
+- O site não pode ser aberto dentro de outra página (anti-clickjacking)
+  e não aparece em buscadores.
+- A chave secreta do banco só existe nos segredos do GitHub; a
+  publicação se recusa a colocá-la no site.
+- O site só aceita conversar com o SEU projeto do Supabase (não com
+  qualquer outro), mesmo que alguém consiga injetar código.
+- O arquivo dos lotes ganha um nome novo e aleatório a cada leitura:
+  se alguém removido do grupo tiver guardado um link do arquivo, ele
+  para de receber lotes novos.
+- As ferramentas do GitHub usadas na publicação estão travadas numa
+  versão exata (não mudam sozinhas).
+- Alertas do Telegram tratam o texto dos sites como texto puro.
+- Links que a IA colocar no relatório mostram para onde levam.
+
+Um ponto que depende do endereço: o site fica em mdorea.github.io,
+que é o mesmo "endereço-base" de qualquer outro site que você publicar
+pelo GitHub Pages nessa conta (ex.: repositórios do restaurante).
+Por isso: não publique outros sites pelo GitHub Pages nessa conta, ou,
+no futuro, use um domínio próprio só para o LeilãoTrack (cerca de
+R$ 40 por ano), que separa tudo de vez.
+
+Nenhum sistema é 100% inviolável. O que dá para garantir é que não há
+porta aberta conhecida e que, se alguém descobrir a senha de um
+membro, só vê os dados daquele membro. Boas práticas que ajudam:
+- use senha forte no Supabase, no GitHub e no seu e-mail, com
+  verificação em duas etapas (2FA) nos três;
+- remova do grupo quem não usa mais;
+- me peça uma revisão sempre que mudar algo importante.
+
+
+---------------------------------------------------------------------
+SE ALGO DER ERRADO
+---------------------------------------------------------------------
+- Site mostra "Site em configuração": faltam os segredos SUPABASE_URL
+  ou SUPABASE_ANON_KEY no GitHub, ou a publicação ainda não rodou
+  depois de criá-los (passo 5).
+- "Os lotes ainda não foram publicados": rode o passo 5 de novo e
+  confira a pasta "privado" no Storage.
+- "Convite ou código inválido": confira e-mail e código; gere um
+  novo no painel se precisar.
+- "Sua conta não está ativa neste grupo": a pessoa foi removida.
+- Supabase grátis "pausa" projetos parados por 7 dias. A leitura de
+  2 em 2 horas mantém o projeto ativo; se mesmo assim pausar, entre
+  no painel do Supabase e toque em "Restore".
+
+
+=====================================================================
+  LeilãoTrack · Desenvolvido com IA · 2026
+  Ferramenta de triagem. Não é recomendação de investimento nem
+  parecer jurídico. O lance é sempre feito no site oficial.
+=====================================================================

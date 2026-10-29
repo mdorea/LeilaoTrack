@@ -12,6 +12,9 @@ import time
 import base64
 import gzip
 import hashlib
+import html
+import re
+import secrets
 import traceback
 import urllib.parse
 import urllib.request
@@ -64,14 +67,78 @@ def decifrar(env):
     return json.loads(gzip.decompress(bruto).decode("utf-8"))
 
 
+# ---- versão multiusuário: lotes num arquivo privado do Supabase (só membros leem) ----
+SB_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+SB = bool(SB_URL and SB_KEY and SB_URL.startswith("https://"))
+SB_PASTA = "privado"
+
+
+def _sb_headers(extra=None):
+    h = {"apikey": SB_KEY, "User-Agent": "LeilaoTrack"}
+    if SB_KEY.startswith("eyJ"):  # chave antiga (JWT); a nova (sb_secret_...) vai só no apikey
+        h["Authorization"] = "Bearer " + SB_KEY
+    h.update(extra or {})
+    return h
+
+
+def sb_baixar(nome):
+    req = urllib.request.Request(f"{SB_URL}/storage/v1/object/authenticated/{SB_PASTA}/{nome}", headers=_sb_headers())
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.read()
+
+
+def sb_apagar(nomes):
+    req = urllib.request.Request(f"{SB_URL}/storage/v1/object/{SB_PASTA}", method="DELETE",
+                                 data=json.dumps({"prefixes": nomes}).encode(),
+                                 headers=_sb_headers({"Content-Type": "application/json"}))
+    with urllib.request.urlopen(req, timeout=60) as r:
+        r.read()
+
+
+NOME_LOTES = re.compile(r"^lotes-[a-f0-9]{32}\.json\.gz$")
+
+
+def sb_versao():
+    try:
+        v = json.loads(sb_baixar("versao.json").decode("utf-8"))
+        return v if isinstance(v, dict) else {}
+    except Exception:
+        return {}
+
+
+def sb_enviar(nome, dados, tipo):
+    req = urllib.request.Request(f"{SB_URL}/storage/v1/object/{SB_PASTA}/{nome}", data=dados, method="POST",
+                                 headers=_sb_headers({"Content-Type": tipo, "x-upsert": "true",
+                                                      "cache-control": "max-age=60"}))
+    with urllib.request.urlopen(req, timeout=120) as r:
+        r.read()
+
+
 def log(m):
     linha = f"{datetime.now(BR):%d/%m %H:%M:%S}  {m}"
     LOGS.append(linha)
     print(linha, flush=True)
 
 
+_SB_ANTERIOR = None
+
+
 def baixar_anterior(nome, padrao):
-    if not URL_PUBLICADA:
+    global _SB_ANTERIOR
+    if SB:
+        try:
+            if _SB_ANTERIOR is None:
+                arq = sb_versao().get("arquivo", "")
+                arq = arq if NOME_LOTES.match(arq) else "lotes.json.gz"
+                _SB_ANTERIOR = json.loads(gzip.decompress(sb_baixar(arq)).decode("utf-8"))
+            if nome == "lotes.json":
+                return {"lotes": _SB_ANTERIOR.get("lotes", []), "estado": _SB_ANTERIOR.get("estado", {})}
+            return _SB_ANTERIOR.get("eventos", padrao)
+        except Exception as e:
+            log(f"Supabase: sem dados anteriores ({e}); tentando a cópia antiga")
+            _SB_ANTERIOR = {}
+    if not URL_PUBLICADA or not CHAVE:
         return padrao
     try:
         req = urllib.request.Request(f"{URL_PUBLICADA}/dados/{nome.replace('.json', '.enc')}?t={int(time.time())}",
@@ -114,7 +181,7 @@ def bate_alerta(l):
 
 
 def main():
-    if not CHAVE:
+    if not CHAVE and not SB:
         sys.exit("ERRO: crie o segredo LT_ACESSO (usuario:senha) em Settings > Secrets and variables > Actions. "
                  "Sem ele os dados não são publicados, para não ficarem abertos.")
     ant = baixar_anterior("lotes.json", {"lotes": [], "estado": {"sites": {}}})
@@ -227,22 +294,37 @@ def main():
               "intervalo": 120, "nuvem": True}
     publicar = {"lotes": {"lotes": list(lotes.values()), "estado": estado, "gerado": AGORA_S},
                 "eventos": eventos, "estado": estado}
-    for nome, obj in publicar.items():
+    if SB:
+        pacote = {"lotes": list(lotes.values()), "eventos": eventos, "estado": estado, "gerado": AGORA_S}
+        bruto = gzip.compress(json.dumps(pacote, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), 9)
+        try:
+            antigo = sb_versao().get("arquivo", "")
+            novo = f"lotes-{secrets.token_hex(16)}.json.gz"
+            sb_enviar(novo, bruto, "application/gzip")
+            sb_enviar("versao.json", json.dumps({"gerado": AGORA_S, "arquivo": novo, "tamanho": len(bruto)}).encode(), "application/json")
+            velhos = [n for n in [antigo, "lotes.json.gz"] if n and n != novo and (NOME_LOTES.match(n) or n == "lotes.json.gz")]
+            try:
+                sb_apagar(velhos)
+            except Exception as e:
+                log(f"Supabase: não apaguei o arquivo antigo ({e})")
+            log(f"Supabase: {len(bruto) // 1024} KB publicados no arquivo privado {novo[:14]}…")
+        except Exception as e:
+            log(f"Supabase: ERRO ao publicar ({e})")
+            if not CHAVE:
+                raise
+    for nome, obj in (publicar.items() if CHAVE else []):
         with open(os.path.join(SAIDA, nome + ".enc"), "w", encoding="utf-8") as f:
             json.dump(cifrar(obj), f)
-    # configuração privada do app (chave de sincronização dos favoritos), também criptografada
-    gh = os.environ.get("LT_GH_TOKEN", "").strip()
-    if gh:
-        with open(os.path.join(SAIDA, "config.enc"), "w", encoding="utf-8") as f:
-            json.dump(cifrar({"gh_token": gh, "repo": os.environ.get("GITHUB_REPOSITORY", "mdorea/LeilaoTrack"),
-                              "branch": "favoritos", "arquivo": "favoritos.enc"}), f)
-    with open(os.path.join(SAIDA, "acesso.json"), "w", encoding="utf-8") as f:
-        json.dump({"sal": CFG["sal"], "iteracoes": ITER}, f)
+    # o token de sincronização dos favoritos da versão antiga NÃO é mais publicado (nem criptografado)
+    if CHAVE:
+        with open(os.path.join(SAIDA, "acesso.json"), "w", encoding="utf-8") as f:
+            json.dump({"sal": CFG["sal"], "iteracoes": ITER}, f)
 
     for l in novos_alerta[:15]:
-        telegram(f"🏠 <b>Novo lote · {l['site']}</b>\n{l['titulo']}\n{l.get('cidade', '')}/{l.get('uf', '')}\n"
+        e = lambda x: html.escape(str(x or ""), quote=False)
+        telegram(f"🏠 <b>Novo lote · {e(l['site'])}</b>\n{e(l['titulo'])}\n{e(l.get('cidade'))}/{e(l.get('uf'))}\n"
                  f"<b>{brl(l.get('valor'))}</b>" + (f"  (-{l['desconto']}%)" if l.get("desconto") else "") +
-                 f"\n{l['url']}")
+                 f"\n{e(l['url'])}")
     if len(novos_alerta) > 15:
         telegram(f"…e mais {len(novos_alerta) - 15} lotes novos no LeilãoTrack.")
     log(f"Pronto: {sum(1 for l in lotes.values() if l.get('ativo'))} lotes ativos")
