@@ -87,11 +87,18 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .chip .x{opacity:.6;font-size:15px;line-height:1}
 .wrap{flex-wrap:wrap;overflow:visible;margin:0;padding:0}
 /* números */
-.numeros{display:grid;grid-template-columns:repeat(3,1fr);border-radius:18px;margin-bottom:18px;overflow:hidden}
+.numeros{display:grid;grid-template-columns:repeat(4,1fr);border-radius:18px;margin-bottom:18px;overflow:hidden}
 .numeros button{padding:12px 4px;display:flex;align-items:baseline;justify-content:center;gap:5px;font-size:12px;white-space:nowrap;color:var(--mu);font-weight:500}
 .numeros b{font-size:20px;color:var(--tx);font-weight:700}
 .numeros button.on{background:var(--glass2)}
 .numeros .n2 b{color:var(--acc2)}.numeros .n3 b{color:var(--hot)}
+.numeros .n4 b{background:linear-gradient(90deg,#8C5AFF,#FF8A5B);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rank{display:inline-grid;place-items:center;min-width:22px;height:18px;padding:0 5px;border-radius:9px;background:linear-gradient(90deg,#8C5AFF,#FF8A5B);color:#fff;font-size:10.5px;font-weight:700;margin-right:2px}
+.motivo{font-size:11px;color:var(--acc2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nota-top{grid-column:1/-1;font-size:12px;color:var(--mu);line-height:1.5;padding:12px 14px;border-radius:16px}
+.nota-top b{color:var(--tx)}
+.top-motivos{margin:0;padding-left:18px;font-size:13px;line-height:1.6}
+@media (max-width:560px){.numeros button{flex-direction:column;align-items:center;gap:0;padding:10px 2px;font-size:10.5px}.numeros b{font-size:18px}}
 /* cabeçalho lista */
 .cab{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px;gap:10px}
 .cab h2{font-size:17px;margin:0;font-weight:700;display:flex;align-items:baseline;gap:8px}
@@ -318,6 +325,7 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
       <button id="n-ativos"><b id="c-ativos">–</b>ativos</button>
       <button class="n2" id="n-novos"><b id="c-novos">–</b>novos</button>
       <button class="n3" id="n-fecham"><b id="c-fecham">–</b>fecham 48h</button>
+      <button class="n4" id="n-top"><b>15</b>top oportunidades</button>
     </div>
     <div class="cab">
       <h2><span id="titulo-lista">Lotes</span> <small id="qtd"></small></h2>
@@ -402,7 +410,14 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
   <div class="alca"></div>
   <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   <div class="folha-cab" style="padding-right:64px"><h3>Calculadora de leilão</h3></div>
-  <div class="folha-corpo"><p class="texto-ajuda" id="calc-tit" style="margin:0 0 12px"></p><div id="calc-corpo"></div></div>
+  <div class="folha-corpo"><p class="texto-ajuda" id="calc-tit" style="margin:0 0 12px"></p>
+    <button class="btn-sec vidro" id="calc-colar" style="margin-bottom:8px">Preencher com uma perícia</button>
+    <div id="calc-colar-box" hidden style="margin-bottom:12px">
+      <p class="texto-ajuda" style="margin:0 0 6px">Na Perícia, toque em <b>Copiar valores para o LeilãoTrack</b> e cole o código aqui.</p>
+      <div style="display:flex;gap:8px"><input class="mini-busca" id="calc-codigo" placeholder="LT1:…" style="margin:0"><button class="btn-sec vidro" id="calc-aplicar" style="width:auto;padding:0 16px;margin:0">Aplicar</button></div>
+      <p class="texto-ajuda" id="calc-colar-msg" style="margin:6px 0 0"></p>
+    </div>
+    <div id="calc-corpo"></div></div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -505,7 +520,13 @@ const Calc = (() => {
       bt.disabled = false;
     });
     atualizar();
+    // preencher de fora (perícia, código copiado): {campo: valor}
+    el._preencher = valores => { for (const [k, val] of Object.entries(valores || {})) { const i = el.querySelector(`[data-k="${k}"]`); if (i && typeof val === "number" && isFinite(val)) i.value = String(Math.round(val * 100) / 100).replace(".", ","); } atualizar(); };
+    el._valores = () => { el.querySelectorAll("[data-k]").forEach(i => v[i.dataset.k] = num(i.value)); return Object.assign({}, v); };
   }
+  // código para levar os valores da Perícia para o LeilãoTrack
+  const codigo = valores => "LT1:" + btoa(unescape(encodeURIComponent(JSON.stringify(valores))));
+  const lerCodigo = txt => { const m = String(txt || "").trim().match(/LT1:([A-Za-z0-9+/=]+)/); if (!m) return null; try { return JSON.parse(decodeURIComponent(escape(atob(m[1])))); } catch (e) { return null; } };
   const CSS = `.calc{display:flex;flex-direction:column;gap:12px}
 .calc-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .calc-campo{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--mu);font-weight:500;min-width:0}
@@ -530,7 +551,7 @@ const Calc = (() => {
 .calc-cen span{font-size:11px;color:var(--mu)}
 .calc-nota{font-size:11.5px;color:var(--mu);line-height:1.5;margin:0}
 @media (max-width:420px){.calc-destaque{grid-template-columns:1fr}.calc-destaque b{font-size:18px}}`;
-  return {render, CSS, contas, lanceMaximo, padrao, num};
+  return {render, CSS, contas, lanceMaximo, padrao, num, codigo, lerCodigo};
 })();
 
 const $=s=>document.querySelector(s);
@@ -542,7 +563,7 @@ const CASA='<svg width="42%" viewBox="0 0 24 24" fill="#fff"><path d="M12 3 2 11
 const ORDENS=[
   ["desconto","Maior desconto","sobre a 1ª praça"],["menor","Menor valor",""],["maior","Maior valor",""],
   ["encerra","Encerra primeiro","próximos leilões no topo"],["recentes","Mais recentes","entrou por último"],["lances","Mais lances","mais disputados"]];
-const FILTRO0={sites:[],tipos:[],pracas:[],ocup:[],ufs:[],cidades:[],vmin:0,vmax:0,dmin:0,prazo:"",novos:false,fecham:false};
+const FILTRO0={sites:[],tipos:[],pracas:[],ocup:[],ufs:[],cidades:[],vmin:0,vmax:0,dmin:0,prazo:"",novos:false,fecham:false,top:false};
 const VMAX=3000000;
 
 let ESTATICO=false;let CHAVE=null;
@@ -734,25 +755,63 @@ function ordenar(a){
 }
 function qtdFiltros(f){return["sites","tipos","pracas","ocup","ufs","cidades"].reduce((n,k)=>n+(f[k].length?1:0),0)+(f.vmin||(f.vmax&&f.vmax<VMAX)?1:0)+(f.dmin?1:0)+(f.prazo?1:0)}
 
+/* ---------------- Top 15: modelo de recomendação (triagem pelos dados do anúncio) ---------------- */
+const RUIM_TOP=/direito|parte ideal|fra[çc][ãa]o|nua[ -]propriedade|usufruto|mea[çc][ãa]o|\d+(,\d+)?\s*%|cota parte|quinh/i;
+const GRANDE_TOP=new Set(["são paulo","santo andré","são bernardo do campo","são caetano do sul","guarulhos","osasco","barueri","santos","campinas","jundiaí","diadema","mauá","carapicuíba","taboão da serra","cotia","mogi das cruzes","rio de janeiro","niterói","belo horizonte","curitiba","porto alegre","brasília","salvador","recife","fortaleza","florianópolis","goiânia"]);
+const MEDIA_TOP=new Set(["sorocaba","ribeirão preto","são josé dos campos","praia grande","são vicente","guarujá","bauru","piracicaba","taubaté","santana de parnaíba","indaiatuba","valinhos","americana","limeira","são josé do rio preto","franca","atibaia","londrina","maringá","joinville","uberlândia","juiz de fora","contagem","são gonçalo","nova iguaçu","duque de caxias","vila velha","vitória","natal","joão pessoa","maceió","aracaju","cuiabá","campo grande","balneário camboriú"]);
+function rankear(lista){
+  const agora=Date.now(),med=new Map(),medT=new Map();
+  const ok=lista.filter(l=>(l.tipo==="Casa"||l.tipo==="Apartamento")&&l.ativo!==false&&!l.encerrado);
+  const push=(m,k,v)=>{if(!m.has(k))m.set(k,[]);m.get(k).push(v)};
+  for(const l of ok)if(l.area>=25&&l.referencia){const m=l.referencia/l.area;push(med,l.cidade+"|"+l.tipo,m);push(medT,l.tipo,m)}
+  const mediana=a=>{const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]};
+  const res=[];
+  for(const l of ok){
+    if(RUIM_TOP.test(l.titulo)||!(l.area>=25)||!(l.valor>=80000)||!l.referencia||l._enc-agora<60*36e5)continue;
+    const dfe=Math.max(0,1-l.valor/l.referencia),m2=l.valor/l.area;
+    const lc=med.get(l.cidade+"|"+l.tipo)||[];
+    const ref=lc.length>=5?mediana(lc):mediana(medT.get(l.tipo)||[m2]);
+    const rel=m2/ref,cid=(l.cidade||"").toLowerCase();
+    const banco=/santander|bradesco|ita[uú]|daycoval|caixa|inter|enforce|banco/i.test(l.comitente||"");
+    const desocup=/desocup/i.test(l.ocupacao||"");
+    let s=Math.min(dfe,.6)/.6*35+Math.max(0,Math.min(1,(1-rel)/.6))*25;
+    s+=GRANDE_TOP.has(cid)?15:MEDIA_TOP.has(cid)?9:4; s+=l.tipo==="Apartamento"?3:0; s+=banco?10:4; s+=desocup?7:0; s+=l.valor>=120000&&l.valor<=900000?5:0;
+    const motivos=[],alertas=[];
+    if(dfe>=.2)motivos.push(`${Math.round(dfe*100)}% abaixo da avaliação`);
+    if(rel<.85)motivos.push(`R$ ${Math.round(m2).toLocaleString("pt-BR")}/m² (referência R$ ${Math.round(ref).toLocaleString("pt-BR")}/m²)`);
+    if(GRANDE_TOP.has(cid))motivos.push("cidade com muita procura");else if(MEDIA_TOP.has(cid))motivos.push("cidade com boa procura");
+    if(banco)motivos.push("venda de banco: matrícula tende a ser mais limpa");else alertas.push("leilão judicial: conferir matrícula, herdeiros e débitos");
+    if(desocup)motivos.push("anunciado como desocupado");else alertas.push("ocupação não informada");
+    if(/terreno de/i.test(l.titulo))alertas.push("a área é do terreno, não a construída");
+    if(rel<.35)alertas.push("preço por m² baixo demais: conferir área e estado do imóvel");
+    if((l.lances||0)>0)alertas.push(`${l.lances} lance(s) já dados`);
+    res.push({l,s,motivos,alertas});
+  }
+  res.sort((a,b)=>b.s-a.s);
+  return res;
+}
 /* ---------------- render início ---------------- */
 function render(){
   if(S.aba==="alertas"||S.aba==="ajustes")return;
   const base=S.aba==="favoritos"?S.lotes.filter(l=>l.fav):S.lotes;
   const f=S.filtro;
-  S.lista=ordenar(filtrar(base,f));
+  S.top=null;
+  if(f.top){const r=rankear(filtrar(base,Object.assign({},f,{top:false,novos:false,fecham:false}))).slice(0,15);
+    S.top=new Map(r.map((x,i)=>[x.l.id,{...x,pos:i+1}]));S.lista=r.map(x=>x.l)}
+  else S.lista=ordenar(filtrar(base,f));
   const semRapido=filtrar(base,Object.assign({},f,{novos:false,fecham:false}));
   const agora=Date.now();
   $("#c-ativos").textContent=semRapido.length.toLocaleString("pt-BR");
   $("#c-novos").textContent=semRapido.filter(l=>l.novo).length;
   $("#c-fecham").textContent=semRapido.filter(l=>l._enc-agora<=48*36e5&&l._enc>agora).length;
-  $("#n-ativos").classList.toggle("on",!f.novos&&!f.fecham);
+  $("#n-ativos").classList.toggle("on",!f.novos&&!f.fecham&&!f.top);$("#n-top").classList.toggle("on",!!f.top);$("#btn-ordem").hidden=!!f.top;
   $("#n-novos").classList.toggle("on",f.novos);$("#n-fecham").classList.toggle("on",f.fecham);
   const n=qtdFiltros(f);const b=$("#badge");b.hidden=!n;b.textContent=n;
   $("#ordem-nome").textContent=ORDENS.find(o=>o[0]===S.ordem)[1];
-  $("#titulo-lista").textContent=S.aba==="favoritos"?"Favoritos":f.novos?"Novidades":f.fecham?"Fecham em 48h":"Lotes";
+  $("#titulo-lista").textContent=S.aba==="favoritos"?"Favoritos":f.top?"Top 15 oportunidades":f.novos?"Novidades":f.fecham?"Fecham em 48h":"Lotes";
   $("#qtd").innerHTML=`${S.lista.length.toLocaleString("pt-BR")} lotes`+(S.estado.rodando?` · <span class="atualizando"><i class="spin"></i>atualizando</span>`:"");
   renderChips();
-  S.mostrados=0;$("#grade").innerHTML="";maisCards();
+  S.mostrados=0;$("#grade").innerHTML=f.top&&S.lista.length?`<div class="nota-top vidro"><b>Ranking automático</b>, refeito a cada leitura dos sites e dentro dos filtros que você escolher (ex.: só SP). Pesa desconto sobre a avaliação, preço por m², procura na cidade, venda de banco e ocupação. Ficam de fora direitos, frações e lotes que fecham em menos de 60 horas. É uma triagem: faça a perícia antes de dar lance.</div>`:"";maisCards();
   if(!S.lista.length)$("#grade").innerHTML=`<div class="vazio vidro">${!S.lotes.length?(S.estado.rodando?'<span class="esq">Buscando os lotes nos sites… isso leva uns 3 minutos na primeira vez.</span>':"Ainda não há lotes. Toque em Ajustes › Atualizar agora."):S.aba==="favoritos"?"Toque no ♡ de um lote para acompanhá-lo aqui.":"Nenhum lote com esses filtros."}</div>`;
 }
 function card(l){
@@ -761,8 +820,9 @@ function card(l){
     ${foto(l)}
     <div class="info">
       <div>
-        <div class="topo-card"><i class="dot" style="background:${SITE_COR[l.site]}"></i>${esc(l.site)}${l.novo?'<span class="novo">· novo</span>':""}${!l.ativo?' · saiu do site':""}</div>
+        <div class="topo-card">${S.top&&S.top.get(l.id)?`<span class="rank">#${S.top.get(l.id).pos}</span>`:""}<i class="dot" style="background:${SITE_COR[l.site]}"></i>${esc(l.site)}${l.novo?'<span class="novo">· novo</span>':""}${!l.ativo?' · saiu do site':""}</div>
         <div class="tit">${esc(l.titulo)}</div>
+        ${S.top&&S.top.get(l.id)?`<div class="motivo">${esc(S.top.get(l.id).motivos.slice(0,2).join(" · "))}</div>`:""}
         <div class="loc">${esc([l.bairro&&!l.titulo.includes(l.bairro)?l.bairro:"",l.cidade&&(l.cidade+(l.uf?" · "+l.uf:""))].filter(Boolean).join(" · ")||l.tipo)}</div>
       </div>
       <div class="baixo"><span class="preco">${fmtBRL(l.valor)}</span><span class="quando ${urg?"urg":""}">${pracaCurta(l.praca_atual)} · ${l.encerra?fmtData(l.encerra).split(" ")[0]:"—"}</span></div>
@@ -815,9 +875,10 @@ async function alternarFav(id){
   if(S.aba==="favoritos")render();
 }
 let tBusca;$("#busca").addEventListener("input",e=>{clearTimeout(tBusca);tBusca=setTimeout(()=>{S.busca=e.target.value;render()},180)});
-$("#n-ativos").onclick=()=>{S.filtro.novos=false;S.filtro.fecham=false;salvarFiltro();render()};
-$("#n-novos").onclick=()=>{S.filtro.novos=!S.filtro.novos;S.filtro.fecham=false;salvarFiltro();render()};
-$("#n-fecham").onclick=()=>{S.filtro.fecham=!S.filtro.fecham;S.filtro.novos=false;salvarFiltro();render()};
+$("#n-ativos").onclick=()=>{S.filtro.novos=false;S.filtro.fecham=false;S.filtro.top=false;salvarFiltro();render()};
+$("#n-top").onclick=()=>{S.filtro.top=!S.filtro.top;S.filtro.novos=false;S.filtro.fecham=false;salvarFiltro();render();window.scrollTo({top:0,behavior:"smooth"})};
+$("#n-novos").onclick=()=>{S.filtro.novos=!S.filtro.novos;S.filtro.fecham=false;S.filtro.top=false;salvarFiltro();render()};
+$("#n-fecham").onclick=()=>{S.filtro.fecham=!S.filtro.fecham;S.filtro.novos=false;S.filtro.top=false;salvarFiltro();render()};
 
 /* ---------------- folhas ---------------- */
 let folhaAberta=null;
@@ -924,6 +985,7 @@ async function abrirLote(id){
       <div class="sep"></div>
       <div class="r rot"><span>${l.encerra?"Leilão "+fmtData(l.encerra):""}</span><span style="color:var(--acc2);font-weight:600">${falta(l.encerra)}</span></div>
     </div>
+    ${S.top&&S.top.get(l.id)?`<div class="sec">Por que está no Top 15 (#${S.top.get(l.id).pos})</div><ul class="top-motivos">${S.top.get(l.id).motivos.map(m=>`<li>${esc(m)}</li>`).join("")}${S.top.get(l.id).alertas.map(m=>`<li style="color:var(--hot)">Atenção: ${esc(m)}</li>`).join("")}</ul>`:""}
     ${pr?`<div class="sec">Praças</div><div class="linhas">${pr}</div>`:""}
     <div class="sec">Detalhes</div><div class="linhas">${linhas.map(([a,b])=>`<div><span>${a}</span><span>${esc(b)}</span></div>`).join("")}</div>
     <div class="sec">Histórico</div><div class="eventos" id="eventos-lote"><div class="texto-ajuda">Carregando…</div></div>
@@ -947,8 +1009,21 @@ function abrirCalc(l){
   $("#calc-tit").innerHTML=`<b>${esc(l.titulo)}</b><br>Valores iniciais estimados a partir do anúncio. Ajuste com o que estiver no edital.`;
   Calc.render($("#calc-corpo"),{lance:l.valor,avaliacao:l.referencia&&l.referencia>l.valor?l.referencia:null,area:soTerreno?null:l.area,cidade:l.cidade,tipo:l.tipo,
     ocupado:!/desocup/i.test(l.ocupacao||"")});
+  $("#calc-colar-box").hidden=true;$("#calc-colar-msg").textContent="";$("#calc-codigo").value="";
   abrir("#folha-calc");
 }
+$("#calc-colar").addEventListener("click",async()=>{
+  $("#calc-colar-box").hidden=false;
+  try{const t=await navigator.clipboard.readText();if(Calc.lerCodigo(t)){$("#calc-codigo").value=t.trim();aplicarCodigo()}}catch(e){}
+  if(!$("#calc-codigo").value)$("#calc-codigo").focus();
+});
+function aplicarCodigo(){
+  const v=Calc.lerCodigo($("#calc-codigo").value);
+  if(!v){$("#calc-colar-msg").textContent="Código não reconhecido. Ele começa com LT1:";return}
+  const{lance,...resto}=v; // mantém o lance deste lote; traz as estimativas da perícia
+  $("#calc-corpo")._preencher(resto);$("#calc-colar-msg").textContent="Preenchido com os valores da perícia. O lance continua o deste lote.";
+}
+$("#calc-aplicar").addEventListener("click",aplicarCodigo);
 /* ---------------- abas ---------------- */
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;trocarAba(b.dataset.aba)});
 function trocarAba(a){
