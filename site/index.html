@@ -282,6 +282,8 @@ button,a,.chip,.card{touch-action:manipulation}
 body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-select:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.barra i{width:100%}}
 /* calculadora */
+@keyframes piscar{0%{background:rgba(255,138,91,.45)}100%{background:var(--glass2)}}
+.calc-campo input.piscar{animation:piscar 1.6s ease-out}
 .calc{display:flex;flex-direction:column;gap:12px}
 .calc-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .calc-campo{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--mu);font-weight:500;min-width:0}
@@ -1046,12 +1048,23 @@ $("#calc-colar").addEventListener("click",async()=>{
   if(!$("#calc-codigo").value)$("#calc-codigo").focus();
 });
 function aplicarCodigo(){
+  const msg=$("#calc-colar-msg");
   const v=Calc.lerCodigo($("#calc-codigo").value);
-  if(!v){$("#calc-colar-msg").textContent="Código não reconhecido. Ele começa com LT1:";return}
+  if(!v){msg.textContent="Código não reconhecido. Ele começa com LT1: — copie de novo na Perícia.";msg.style.color="var(--hot)";return}
   const{lance,...resto}=v; // mantém o lance deste lote; traz as estimativas da perícia
-  $("#calc-corpo")._preencher(resto);$("#calc-colar-msg").textContent="Preenchido com os valores da perícia. O lance continua o deste lote.";
+  $("#calc-corpo")._preencher(resto);
+  // mostra o que mudou: destaca os campos e leva até o resultado
+  const nomes={mercado:"valor de mercado",debitos:"débitos",desocupacao:"desocupação",reforma:"reforma",mensal:"custo mensal",prazo:"prazo"};
+  const itens=[];
+  for(const k of Object.keys(resto)){const i=$(`#calc-corpo [data-k="${k}"]`);if(!i)continue;i.classList.remove("piscar");void i.offsetWidth;i.classList.add("piscar");
+    if(nomes[k])itens.push(`${nomes[k]} ${k==="prazo"?resto[k]+" meses":fmtBRL(resto[k])}`)}
+  msg.style.color="";msg.innerHTML=`<b>Aplicado às ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}.</b> ${esc(itens.join(" · "))}. O lance continua o deste lote.`;
+  toast("Valores da perícia aplicados");
+  setTimeout(()=>$("#calc-corpo .calc-res").scrollIntoView({behavior:"smooth",block:"start"}),250);
 }
-$("#calc-aplicar").addEventListener("click",aplicarCodigo);
+$("#calc-aplicar").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();aplicarCodigo()});
+$("#calc-codigo").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();aplicarCodigo()}});
+$("#calc-codigo").addEventListener("paste",()=>setTimeout(()=>{if(Calc.lerCodigo($("#calc-codigo").value))aplicarCodigo()},50));
 /* ---------------- abas ---------------- */
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;trocarAba(b.dataset.aba)});
 function trocarAba(a){
