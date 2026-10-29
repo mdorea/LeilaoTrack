@@ -87,18 +87,28 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .chip .x{opacity:.6;font-size:15px;line-height:1}
 .wrap{flex-wrap:wrap;overflow:visible;margin:0;padding:0}
 /* números */
-.numeros{display:grid;grid-template-columns:repeat(4,1fr);border-radius:18px;margin-bottom:18px;overflow:hidden}
-.numeros button{padding:12px 4px;display:flex;align-items:baseline;justify-content:center;gap:5px;font-size:12px;white-space:nowrap;color:var(--mu);font-weight:500}
-.numeros b{font-size:20px;color:var(--tx);font-weight:700}
-.numeros button.on{background:var(--glass2)}
-.numeros .n2 b{color:var(--acc2)}.numeros .n3 b{color:var(--hot)}
-.numeros .n4 b{background:linear-gradient(90deg,#8C5AFF,#FF8A5B);-webkit-background-clip:text;background-clip:text;color:transparent}
 .rank{display:inline-grid;place-items:center;min-width:22px;height:18px;padding:0 5px;border-radius:9px;background:linear-gradient(90deg,#8C5AFF,#FF8A5B);color:#fff;font-size:10.5px;font-weight:700;margin-right:2px}
 .motivo{font-size:11px;color:var(--acc2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nota-top{grid-column:1/-1;font-size:12px;color:var(--mu);line-height:1.5;padding:12px 14px;border-radius:16px}
 .nota-top b{color:var(--tx)}
 .top-motivos{margin:0;padding-left:18px;font-size:13px;line-height:1.6}
-@media (max-width:560px){.numeros button{flex-direction:column;align-items:center;gap:0;padding:10px 2px;font-size:10.5px}.numeros b{font-size:18px}}
+/* números (blocos com ícone) */
+.numeros{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.tile{display:flex;align-items:center;gap:10px;padding:12px;border-radius:18px;text-align:left;min-width:0;transition:transform .15s,border-color .2s,background .2s}
+.tile:active{transform:scale(.97)}
+.tile-ic{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;color:#fff}
+.tile-ic svg{width:19px;height:19px}
+.tile span{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.tile b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.tile small{font-size:11.5px;color:var(--mu);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t1 .tile-ic{background:linear-gradient(135deg,#6D7BFF,#8C5AFF)}
+.t2 .tile-ic{background:linear-gradient(135deg,#FFB36B,#FF8A5B)}
+.t3 .tile-ic{background:linear-gradient(135deg,#FF8A8A,#E5484D)}
+.t4 .tile-ic{background:linear-gradient(135deg,#8C5AFF,#FF8A5B)}
+.t2 b{color:var(--acc2)}.t3 b{color:var(--hot)}
+.t4 b{background:linear-gradient(90deg,#8C5AFF,#FF8A5B);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tile.on{background:var(--glass2);border-color:var(--acc2);box-shadow:0 0 0 1px var(--acc2) inset}
+@media (max-width:620px){.numeros{grid-template-columns:repeat(2,1fr);gap:8px}.tile{padding:10px}.tile-ic{width:34px;height:34px;border-radius:11px}.tile b{font-size:18px}}
 /* cabeçalho lista */
 .cab{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px;gap:10px}
 .cab h2{font-size:17px;margin:0;font-weight:700;display:flex;align-items:baseline;gap:8px}
@@ -212,12 +222,10 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .esq{animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.5}}
-@media (max-width:400px){.numeros button{font-size:11px}.numeros b{font-size:18px}}
 @media (min-width:900px){
   .app{padding-top:34px}
   .topo{margin-bottom:22px}
   .chips{margin:0 0 14px;padding:2px 0 4px}
-  .numeros{max-width:560px}
   .foto{width:104px;height:104px}
 }
 /* carregando */
@@ -321,11 +329,11 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
       </button>
     </div>
     <div class="chips" id="chips"></div>
-    <div class="numeros vidro">
-      <button id="n-ativos"><b id="c-ativos">–</b>ativos</button>
-      <button class="n2" id="n-novos"><b id="c-novos">–</b>novos</button>
-      <button class="n3" id="n-fecham"><b id="c-fecham">–</b>fecham 48h</button>
-      <button class="n4" id="n-top"><b>15</b>top oportunidades</button>
+    <div class="numeros">
+      <button class="tile t1 vidro" id="n-ativos"><i class="tile-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></i><span><b id="c-ativos">–</b><small>ativos</small></span></button>
+      <button class="tile t2 vidro" id="n-novos"><i class="tile-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg></i><span><b id="c-novos">–</b><small>novos</small></span></button>
+      <button class="tile t3 vidro" id="n-fecham"><i class="tile-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></i><span><b id="c-fecham">–</b><small>fecham 48h</small></span></button>
+      <button class="tile t4 vidro" id="n-top"><i class="tile-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3"/></svg></i><span><b>Top 15</b><small>oportunidades</small></span></button>
     </div>
     <div class="cab">
       <h2><span id="titulo-lista">Lotes</span> <small id="qtd"></small></h2>
