@@ -284,6 +284,27 @@ def coletar_zuk(http, log, limite=4000, completo=True, max_paginas=3):
 FRAZAO = "https://www.frazaoleiloes.com.br"
 
 
+UFS = set("AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split())
+
+
+def frazao_local(tit):
+    """Títulos da Frazão: 'Casa na Vila Guilherme, São Paulo SP' ou 'Casa em Atibaia SP'.
+    Devolve (bairro, cidade, uf) ou None."""
+    t = (tit or "").strip().rstrip(".")
+    m = re.search(r"^(.*?)[\s,/\-]+([A-Z]{2})$", t)
+    if not m or m.group(2) not in UFS:
+        return None
+    resto, uf = m.group(1), m.group(2)
+    if "," in resto:
+        antes, cid = resto.rsplit(",", 1)
+        mb = re.search(r"\b(?:no|na|nos|nas|em|do|da)\s+(.+)$", antes)
+        bairro, cid = (mb.group(1).strip() if mb else ""), cid.strip()
+    else:
+        mc = re.search(r"\bem\s+(.+)$", resto)
+        bairro, cid = "", (mc.group(1).strip() if mc else "")
+    return (bairro, cid, uf) if cid else None
+
+
 def frazao_parse(html):
     lotes = []
     for b in _blocos(html, "thumbnail-vitrine-lot"):
@@ -321,15 +342,19 @@ def frazao_parse(html):
                 if v:
                     pracas.append({"nome": f"{n}ª praça" if n else "Praça única", "data": data_iso(d), "valor": v})
         st = re.search(r'label-md status-[a-z]+">([^<]*)<', b)
-        cidade, uf = cidade_uf(tit)
-        bairro = ""
-        mb = re.search(r"\b(?:no|na|em)\s+(.+?),\s*[^,]+,\s*[A-Z]{2}\s*$", tit)
-        if mb:
-            bairro = mb.group(1)
+        loc = frazao_local(tit)
+        if loc:
+            bairro, cidade, uf = loc
         else:
-            partes = [p.strip() for p in tit.split(" - ")]
-            if len(partes) >= 3:
-                bairro = partes[-2]
+            cidade, uf = cidade_uf(tit)
+            bairro = ""
+            mb = re.search(r"\b(?:no|na|em)\s+(.+?),\s*[^,]+,\s*[A-Z]{2}\s*$", tit)
+            if mb:
+                bairro = mb.group(1)
+            else:
+                partes = [p.strip() for p in tit.split(" - ")]
+                if len(partes) >= 3:
+                    bairro = partes[-2]
         lotes.append(finalizar({
             "id": f"frazao:{lid}", "site": "Frazão", "url": url,
             "titulo": tit, "endereco": addr, "bairro": bairro, "cidade": cidade, "uf": uf,
