@@ -206,7 +206,18 @@ const IA = (() => {
     abrirTela,
     async texto(prompt, opts = {}) {
       const reg = await ler(); if (!reg) throw new ErroIA("Conecte sua IA para fazer a perícia.", "sem_chave");
-      return reg.prov === "claude" ? claude(reg, prompt, opts) : gemini(reg, prompt, opts);
+      // limite de espera: sem nenhuma resposta da IA nesse tempo, desiste (em vez de ficar parado para sempre)
+      const ctl = new AbortController(); let porTempo = false;
+      const ext = opts.sinal;
+      if (ext) { if (ext.aborted) ctl.abort(); else ext.addEventListener("abort", () => ctl.abort(), {once: true}); }
+      const prazo = ms => { clearTimeout(t); t = setTimeout(() => { porTempo = true; ctl.abort(); }, ms); };
+      let t = null; prazo(opts.nivel === "leitura" ? 150000 : 240000);
+      const o = Object.assign({}, opts, {sinal: ctl.signal, onText: txt => { prazo(120000); if (opts.onText) opts.onText(txt); }});
+      try { return await (reg.prov === "claude" ? claude(reg, prompt, o) : gemini(reg, prompt, o)); }
+      catch (e) {
+        if (porTempo) throw new ErroIA("A IA demorou demais para responder. Tente de novo; se continuar, envie menos páginas ou use o Claude.", "tempo");
+        throw e;
+      } finally { clearTimeout(t); }
     },
     async json(prompt, opts = {}) {
       const {text} = await this.texto(prompt + "\n\nResponda somente com o JSON, sem texto antes ou depois.", Object.assign({nivel: "leitura", maxTokens: 2000}, opts));

@@ -39,8 +39,8 @@ const Pericia = (() => {
     <section class="painel vidro">
       <h4><span class="passo">2</span>Sobre o lote <span class="texto-ajuda" style="font-weight:500">(opcional)</span></h4>
       <div class="grade2">
-        <label class="campo">Lance mínimo atual (R$)<input id="p-lance" inputmode="decimal" maxlength="20" placeholder="ex.: 286.087"></label>
-        <label class="campo">Valor de avaliação (R$)<input id="p-avaliacao" inputmode="decimal" maxlength="20" placeholder="ex.: 500.469"></label>
+        <label class="campo">Lance mínimo atual (R$)<input id="p-lance" class="moeda" inputmode="numeric" autocomplete="off" maxlength="22" placeholder="R$ 286.087"></label>
+        <label class="campo">Valor de avaliação (R$)<input id="p-avaliacao" class="moeda" inputmode="numeric" autocomplete="off" maxlength="22" placeholder="R$ 500.469"></label>
         <label class="campo">Link do anúncio<input id="p-link" inputmode="url" maxlength="400" placeholder="https://…"></label>
       </div>
       <div class="campo" style="margin-top:4px">Objetivo<div class="chips wrap" id="p-objetivo"><button class="chip on" data-v="revender">Revender</button><button class="chip vidro" data-v="alugar">Alugar</button><button class="chip vidro" data-v="morar">Morar</button></div></div>
@@ -162,6 +162,14 @@ const Pericia = (() => {
       <select data-id="${d.id}" aria-label="Tipo do documento">${TIPOS.map(t => `<option ${t === d.tipo ? "selected" : ""}>${t}</option>`).join("")}</select>
       <button class="tirar" data-tirar="${d.id}" aria-label="Remover ${esc(d.nome)}">✕</button></div>`).join("");
   }
+  /* campos de dinheiro: só números, mostrados como R$ 195.500 */
+  const moedaNum = t => { const d = String(t || "").replace(/,\d{1,2}$/, "").replace(/\D/g, ""); return d ? Math.min(Number(d.slice(0, 12)), 999999999999) : 0; };
+  const moedaTexto = v => { const n = Math.round(Number(v) || 0); return n > 0 ? "R$ " + n.toLocaleString("pt-BR") : ""; };
+  function mascaraMoeda(el) {
+    el.addEventListener("beforeinput", e => { if (e.data && /[^\d]/.test(e.data) && e.inputType === "insertText") e.preventDefault(); });
+    el.addEventListener("input", () => { el.value = moedaTexto(moedaNum(el.value)); el.setSelectionRange(el.value.length, el.value.length); });
+    el.addEventListener("blur", () => { el.value = moedaTexto(moedaNum(el.value)); });
+  }
   const escolhido = g => ($(g + " .chip.on") || {dataset: {}}).dataset.v;
   function atualizarBotao() {
     const lendo = docs.some(d => d.okLeitura === undefined), prontos = docs.filter(d => d.okLeitura);
@@ -225,8 +233,16 @@ ${partes.join("\n\n")}`;
   }
 
   /* ---------- resultado ---------- */
+  let esperaIni = 0, relogioT = null;
   function esperar(on, msgFixa) {
-    $("#p-espera").hidden = !on; clearInterval(fraseT); if (!on) return;
+    const caixa = $("#p-espera"); clearInterval(fraseT);
+    if (!on) { caixa.hidden = true; clearInterval(relogioT); relogioT = null; return; }
+    if (caixa.hidden || !relogioT) { // mostra há quanto tempo está esperando
+      esperaIni = Date.now(); clearInterval(relogioT);
+      relogioT = setInterval(() => { const s = Math.round((Date.now() - esperaIni) / 1000); const r = $("#p-espera-tempo"); if (r) r.textContent = s >= 5 ? `${s} s` + (s >= 60 ? " · documentos escaneados podem levar alguns minutos" : "") : ""; }, 1000);
+    }
+    caixa.hidden = false;
+    if (!$("#p-espera-tempo")) caixa.insertAdjacentHTML("beforeend", '<p id="p-espera-tempo" style="font-size:12px;opacity:.75"></p>');
     if (msgFixa) { $("#p-espera-msg").textContent = msgFixa; return; }
     let i = 0; $("#p-espera-msg").textContent = FRASES[0];
     fraseT = setInterval(() => { i = (i + 1) % FRASES.length; $("#p-espera-msg").textContent = FRASES[i]; }, 2600);
@@ -396,7 +412,7 @@ ${partes.join("\n\n")}`;
     return r;
   }
   function renderCalc(v) {
-    const lance = Calc.num($("#p-lance").value) || null, aval = Calc.num($("#p-avaliacao").value) || null;
+    const lance = moedaNum($("#p-lance").value) || null, aval = moedaNum($("#p-avaliacao").value) || null;
     const d = Object.assign({lance: lance || num(v && v.lance_maximo) || 100000, avaliacao: aval}, {fixos: valoresDaPericia(v)});
     Calc.render($("#p-calc"), d, {botaoIA: "Estimar valores com a minha IA", onIA: estimarComIA});
   }
@@ -465,8 +481,9 @@ Responda só com JSON: {"mercado": valor de mercado provável em reais, "debitos
       if (e.target.closest("[data-ia-trocar]")) IA.abrirTela(mostrarIA);
       if (e.target.closest("#p-sem-lote")) { lote = null; mostrarLote(); $("#p-levar").hidden = true; }
     });
+    ["#p-lance", "#p-avaliacao"].forEach(id => mascaraMoeda($(id)));
     ["#p-lance", "#p-avaliacao"].forEach((id, i) => $(id).addEventListener("input", () => {
-      const inp = $(`#p-calc [data-k="${i ? "mercado" : "lance"}"]`), n = Calc.num($(id).value);
+      const inp = $(`#p-calc [data-k="${i ? "mercado" : "lance"}"]`), n = moedaNum($(id).value);
       if (inp && n) { inp.value = String(n).replace(".", ","); inp.dispatchEvent(new Event("input", {bubbles: true})); }
     }));
     renderCalc(null); renderHist(); mostrarIA();
@@ -477,8 +494,8 @@ Responda só com JSON: {"mercado": valor de mercado provável em reais, "debitos
     iniciar,
     comLote(l) {
       iniciar(); lote = l; mostrarLote();
-      if (l.valor) $("#p-lance").value = Math.round(l.valor).toLocaleString("pt-BR");
-      if (l.referencia) $("#p-avaliacao").value = Math.round(l.referencia).toLocaleString("pt-BR");
+      $("#p-lance").value = l.valor ? moedaTexto(l.valor) : "";
+      $("#p-avaliacao").value = l.referencia ? moedaTexto(l.referencia) : "";
       const u = urlSegura(l.url); if (u) $("#p-link").value = u;
       renderCalc(ultimoVeredito);
     },
