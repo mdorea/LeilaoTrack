@@ -4,6 +4,9 @@ const Calc = (() => {
   const brl = v => (v < 0 ? "−" : "") + "R$ " + Math.round(Math.abs(v)).toLocaleString("pt-BR");
   const pct = v => (v * 100).toLocaleString("pt-BR", {maximumFractionDigits: 1}) + "%";
   const num = s => { if (typeof s === "number") return s; s = String(s || "").replace(/[^\d,.-]/g, ""); if (s.includes(",")) s = s.replace(/\./g, "").replace(",", "."); const n = parseFloat(s); return isNaN(n) ? 0 : n; };
+  // campos em dinheiro: máscara "R$ 286.087" (só números, sem centavos)
+  const moedaNum = s => { if (typeof s === "number") return s; const d = String(s || "").replace(/,\d{1,2}$/, "").replace(/\D/g, ""); return d ? Math.min(Number(d.slice(0, 12)), 999999999999) : 0; };
+  const moedaTexto = v => { const n = Math.round(Number(v) || 0); return n > 0 ? "R$ " + n.toLocaleString("pt-BR") : (n === 0 ? "R$ 0" : ""); };
   const CAMPOS = [
     ["lance", "Lance (R$)", "Quanto você pretende dar"],
     ["mercado", "Valor de mercado estimado (R$)", "Por quanto o imóvel vende hoje, já regularizado"],
@@ -53,17 +56,36 @@ const Calc = (() => {
     for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; contas(v, m).roi >= v.margem / 100 ? lo = m : hi = m; }
     return Math.floor(lo / 500) * 500;
   }
+  const ehMoeda = k => CAMPOS.some(([c, t]) => c === k && t.includes("(R$)"));
+  const mostrar = (k, x) => ehMoeda(k) ? moedaTexto(x) : String(Math.round(x * 100) / 100).replace(".", ",");
+  const ler = (k, s) => ehMoeda(k) ? moedaNum(s) : num(s);
+  // opts.vazio: os campos começam em branco, com o valor sugerido em cinza (e usado na conta até a pessoa digitar);
+  // só vêm preenchidos os que a pessoa informou ou que a perícia estimou (dados.fixos, dados.informados)
   function render(el, dados, opts = {}) {
-    const v = Object.assign(padrao(dados), dados.fixos || {});
+    const pad = padrao(Object.assign({}, dados, {lance: dados.lance || 100000}));
+    for (const [k] of CAMPOS) { pad[k] = num(pad[k]); if (!isFinite(pad[k])) pad[k] = 0; }
+    const v = Object.assign({}, pad, dados.fixos || {});
     for (const [k] of CAMPOS) { v[k] = num(v[k]); if (!isFinite(v[k])) v[k] = 0; }
+    const informados = new Set([...Object.keys(dados.fixos || {}), ...(dados.informados || [])]);
+    const valorInicial = k => !opts.vazio || informados.has(k) ? mostrar(k, v[k]) : "";
     el.innerHTML = `<div class="calc">
       <div class="calc-grade">${CAMPOS.map(([k, t, h]) => `<label class="calc-campo"><span>${t}</span>
-        <input inputmode="decimal" data-k="${k}" value="${String(v[k]).replace(".", ",")}"><small>${h}</small></label>`).join("")}</div>
+        <input inputmode="${ehMoeda(k) ? "numeric" : "decimal"}" autocomplete="off" maxlength="22" data-k="${k}" value="${valorInicial(k)}" placeholder="${mostrar(k, pad[k])}"><small>${h}</small></label>`).join("")}</div>
       ${opts.botaoIA ? `<button class="calc-ia" type="button">${opts.botaoIA}</button><p class="calc-ia-msg" hidden></p>` : ""}
       <div class="calc-res"></div></div>`;
     const res = el.querySelector(".calc-res");
+    const lerCampos = () => {
+      // as sugestões em cinza acompanham o lance digitado (mercado, registro, reforma…)
+      const li = el.querySelector('[data-k="lance"]'), lanceAgora = li && li.value.trim() ? ler("lance", li.value) : 0;
+      if (opts.vazio && lanceAgora && lanceAgora !== pad.lance) {
+        const novo = padrao(Object.assign({}, dados, {lance: lanceAgora}));
+        for (const [k] of CAMPOS) { pad[k] = num(novo[k]); if (!isFinite(pad[k])) pad[k] = 0; }
+        el.querySelectorAll("[data-k]").forEach(i => { i.placeholder = mostrar(i.dataset.k, pad[i.dataset.k]); });
+      }
+      el.querySelectorAll("[data-k]").forEach(i => { const k = i.dataset.k; v[k] = i.value.trim() === "" ? pad[k] : ler(k, i.value); });
+    };
     const atualizar = () => {
-      el.querySelectorAll("[data-k]").forEach(i => v[i.dataset.k] = num(i.value));
+      lerCampos();
       const c = contas(v), max = lanceMaximo(v);
       const cen = [["Pessimista", {mercado: v.mercado * 0.9, prazo: v.prazo + 6}], ["Base", {}], ["Otimista", {mercado: v.mercado * 1.05, prazo: Math.max(3, v.prazo - 3)}]]
         .map(([n, ajuste]) => [n, contas(Object.assign({}, v, ajuste))]);
@@ -87,19 +109,23 @@ const Calc = (() => {
         <div class="calc-cen">${cen.map(([n, x]) => `<div><small>${n}</small><b class="${x.lucro >= 0 ? "pos" : "neg"}">${brl(x.lucro)}</b><span>${pct(x.roiAno)} a.a.</span></div>`).join("")}</div>
         <p class="calc-nota">Aplicado a ${v.cdi.toLocaleString("pt-BR")}% ao ano, o mesmo dinheiro renderia cerca de ${brl(c.investido * cdiPeriodo)} em ${v.prazo} meses (antes de impostos). Imposto de renda calculado de forma simplificada, para pessoa física. Estimativa para comparar cenários — confirme custos e débitos no edital e com um advogado.</p>`;
     };
-    el.addEventListener("input", e => { if (e.target.matches("[data-k]")) atualizar(); });
+    el.addEventListener("input", e => {
+      const i = e.target; if (!i.matches("[data-k]")) return;
+      if (ehMoeda(i.dataset.k)) { const d = String(i.value).replace(/\D/g, ""); i.value = d ? moedaTexto(moedaNum(d)) : ""; try { i.setSelectionRange(i.value.length, i.value.length); } catch (_) {} }
+      atualizar();
+    });
     el.querySelector(".calc-ia")?.addEventListener("click", async () => {
       const msg = el.querySelector(".calc-ia-msg"), bt = el.querySelector(".calc-ia");
       bt.disabled = true; msg.hidden = false; msg.textContent = "Pedindo a estimativa ao agente…";
-      try { const r = await opts.onIA(v); for (const [k, val] of Object.entries(r.valores || {})) { const i = el.querySelector(`[data-k="${k}"]`); if (i && val != null) i.value = String(Math.round(val)).replace(".", ","); }
+      try { const r = await opts.onIA(v); for (const [k, val] of Object.entries(r.valores || {})) { const i = el.querySelector(`[data-k="${k}"]`); if (i && val != null) i.value = mostrar(k, Math.round(val)); }
         msg.textContent = r.texto || "Valores preenchidos pelo agente."; atualizar(); }
       catch (e) { msg.textContent = e.message || "Não consegui a estimativa agora."; }
       bt.disabled = false;
     });
     atualizar();
     // preencher de fora (perícia, código copiado): {campo: valor}
-    el._preencher = valores => { for (const [k, val] of Object.entries(valores || {})) { const i = el.querySelector(`[data-k="${k}"]`); if (i && typeof val === "number" && isFinite(val)) i.value = String(Math.round(val * 100) / 100).replace(".", ","); } atualizar(); };
-    el._valores = () => { el.querySelectorAll("[data-k]").forEach(i => v[i.dataset.k] = num(i.value)); return Object.assign({}, v); };
+    el._preencher = valores => { for (const [k, val] of Object.entries(valores || {})) { const i = el.querySelector(`[data-k="${k}"]`); if (i && typeof val === "number" && isFinite(val)) i.value = mostrar(k, val); } atualizar(); };
+    el._valores = () => { lerCampos(); return Object.assign({}, v); };
   }
   // código para levar os valores da Perícia para o LeilãoTrack
   const codigo = valores => "LT1:" + btoa(unescape(encodeURIComponent(JSON.stringify(valores))));
@@ -108,6 +134,7 @@ const Calc = (() => {
 .calc-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .calc-campo{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--mu);font-weight:500;min-width:0}
 .calc-campo input{height:40px;border-radius:11px;border:1px solid var(--line2,var(--line));background:var(--glass2);padding:0 10px;font-size:14px;color:var(--tx);outline:0;width:100%;font-variant-numeric:tabular-nums}
+.calc-campo input::placeholder{color:var(--mu2);opacity:1}
 .calc-campo small{font-size:10.5px;color:var(--mu2);line-height:1.3}
 .calc-ia{height:42px;border-radius:21px;font-weight:600;font-size:13px;background:var(--glass2);border:1px solid var(--line2,var(--line));color:var(--tx);padding:0 16px;align-self:flex-start}
 .calc-ia-msg{font-size:12.5px;color:var(--mu);margin:0;line-height:1.5}

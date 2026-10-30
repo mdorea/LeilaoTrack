@@ -53,7 +53,7 @@ const Pericia = (() => {
       <span class="texto-ajuda" id="p-status">Adicione pelo menos um documento.</span>
     </div>
     <section class="painel vidro" id="p-resultado" hidden aria-live="polite">
-      <h4><span class="passo">3</span>Resultado da perícia</h4>
+      <h4>Resultado da perícia</h4>
       <div class="espera" id="p-espera" hidden><div class="barra"><i></i></div><p id="p-espera-msg">Lendo os documentos…</p></div>
       <div id="p-veredito"></div>
       <div class="relatorio" id="p-relatorio"></div>
@@ -65,8 +65,8 @@ const Pericia = (() => {
       <p class="texto-ajuda" style="margin-top:14px">Análise feita por IA para organizar documentos e riscos. Não é parecer jurídico nem laudo técnico (ABNT). Confirme os pontos críticos com um advogado antes de dar lance.</p>
     </section>
     <section class="painel vidro">
-      <h4>Calculadora de lance</h4>
-      <p class="texto-ajuda" style="margin-top:0">Quanto dá para lançar e quanto sobra no fim. Depois de uma perícia, usa as estimativas da IA. Ajuste qualquer campo.</p>
+      <h4><span class="passo">3</span>Calculadora de lance</h4>
+      <p class="texto-ajuda" style="margin-top:0">Quanto dá para lançar e quanto sobra no fim. Os valores em cinza são sugestões e já entram na conta; digite por cima o que você souber. Depois de uma perícia, usa as estimativas da IA.</p>
       <div id="p-calc"></div>
     </section>
     <section class="painel vidro" id="p-sec-hist" hidden>
@@ -413,8 +413,10 @@ ${partes.join("\n\n")}`;
   }
   function renderCalc(v) {
     const lance = moedaNum($("#p-lance").value) || null, aval = moedaNum($("#p-avaliacao").value) || null;
-    const d = Object.assign({lance: lance || num(v && v.lance_maximo) || 100000, avaliacao: aval}, {fixos: valoresDaPericia(v)});
-    Calc.render($("#p-calc"), d, {botaoIA: "Estimar valores com a minha IA", onIA: estimarComIA});
+    const lanceIA = num(v && v.lance_maximo);
+    const informados = [lance || lanceIA ? "lance" : "", aval ? "mercado" : ""].filter(Boolean);
+    const d = {lance: lance || lanceIA || null, avaliacao: aval, informados, fixos: valoresDaPericia(v)};
+    Calc.render($("#p-calc"), d, {vazio: true, botaoIA: "Estimar valores com a minha IA", onIA: estimarComIA});
   }
   async function estimarComIA(v) {
     if (!(await IA.pronta())) { IA.abrirTela(mostrarIA); throw new Error("Conecte sua IA em Minha IA para estimar."); }
@@ -484,7 +486,7 @@ Responda só com JSON: {"mercado": valor de mercado provável em reais, "debitos
     ["#p-lance", "#p-avaliacao"].forEach(id => mascaraMoeda($(id)));
     ["#p-lance", "#p-avaliacao"].forEach((id, i) => $(id).addEventListener("input", () => {
       const inp = $(`#p-calc [data-k="${i ? "mercado" : "lance"}"]`), n = moedaNum($(id).value);
-      if (inp && n) { inp.value = String(n).replace(".", ","); inp.dispatchEvent(new Event("input", {bubbles: true})); }
+      if (inp) { inp.value = n ? String(n) : ""; inp.dispatchEvent(new Event("input", {bubbles: true})); }
     }));
     renderCalc(null); renderHist(); mostrarIA();
     carregarLibs().catch(() => {});
