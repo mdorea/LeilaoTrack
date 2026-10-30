@@ -1,6 +1,6 @@
 # LeilãoTrack
 
-Todos os leilões. Um só lugar. Acompanha os lotes da Frazão Leilões, Portal Zuk e Mega Leilões.
+Todos os leilões. Um só lugar. Acompanha os lotes da Frazão Leilões, Portal Zuk, Mega Leilões e Biasi Leilões.
 Desenvolvido com IA · 2026.
 
 - A leitura dos sites roda no GitHub a cada 2 horas, uma vez para todo o grupo.

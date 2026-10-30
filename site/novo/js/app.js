@@ -212,7 +212,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#beta-
 
 /* ---------------- ajustes ---------------- */
 function statusSites(est) {
-  return ["Zuk", "Frazão", "Mega"].map(s => { const i = (est.sites || {})[s] || {};
+  return ["Zuk", "Frazão", "Mega", "Biasi"].map(s => { const i = (est.sites || {})[s] || {};
     return `<div class="site-st"><span><i class="dot" style="display:inline-block;background:${SITE_COR[s]};margin-right:8px"></i>${SITE_NOME[s]}</span><span class="${i.status === "ok" ? "ok" : i.status ? "erro" : ""}">${i.status === "ok" ? `${Number(i.lotes || 0).toLocaleString("pt-BR")} lotes · ${esc(new Date(i.quando).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"}))}` : i.status === "pausado" ? "em pausa" : i.status === "erro" ? "erro ao ler" : "aguardando"}</span></div>`; }).join("");
 }
 async function renderAjustes() {

@@ -15,8 +15,9 @@ const LS = {
 };
 const RODAPE = `<b>LeilãoTrack</b> · Desenvolvido com IA · 2026<br>Ferramenta de triagem de leilões. Não é recomendação de investimento nem parecer jurídico.<br>O lance é sempre feito no site oficial do leiloeiro.`;
 
-const SITE_COR = {"Frazão": "#E0694F", "Zuk": "#4C8BF5", "Mega": "#2FB37A"};
-const SITE_NOME = {"Frazão": "Frazão Leilões", "Zuk": "Portal Zuk", "Mega": "Mega Leilões"};
+const SITE_COR = {"Frazão": "#E0694F", "Zuk": "#4C8BF5", "Mega": "#2FB37A", "Biasi": "#1E5BB8"};
+const SITE_NOME = {"Frazão": "Frazão Leilões", "Zuk": "Portal Zuk", "Mega": "Mega Leilões", "Biasi": "Biasi Leilões"};
+const SITES = ["Frazão", "Zuk", "Mega", "Biasi"];
 const GRADS = ["linear-gradient(160deg,#EBCFAE,#B4876A)", "linear-gradient(160deg,#C5D7EA,#7E9FC3)", "linear-gradient(160deg,#CBE4D3,#84B598)", "linear-gradient(160deg,#E6D8EE,#A68ABD)", "linear-gradient(160deg,#EFE3B8,#C3A866)"];
 const CASA = '<svg width="42%" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z"/></svg>';
 const UFS = ["SP", "RJ", "MG", "PR", "SC", "RS", "GO", "DF", "BA", "PE", "CE", "ES", "MT", "MS", "PA", "AM", "MA", "PB", "RN", "AL", "SE", "PI", "TO", "RO", "AC", "AP", "RR"];
@@ -48,7 +49,7 @@ document.addEventListener("error", e => {
 function toast(t) { const e = $("#toast"); e.textContent = t; e.classList.add("on"); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove("on"), 2400); }
 
 /* ---------- tela de carregamento ---------- */
-const MSGS = {inicio: ["Preparando seus leilões…", "Buscando lotes da Frazão…", "Consultando o Portal Zuk…", "Organizando a Mega Leilões…", "Calculando os descontos…"],
+const MSGS = {inicio: ["Preparando seus leilões…", "Buscando lotes da Frazão…", "Consultando o Portal Zuk…", "Organizando a Mega Leilões…", "Trazendo os imóveis da Biasi…", "Calculando os descontos…"],
   login: ["Conferindo seu acesso…", "Abrindo o cofre dos lotes…", "Organizando os leilões…"]};
 let _carT = null, _carIni = 0;
 function mostrarCarregando(tipo) {

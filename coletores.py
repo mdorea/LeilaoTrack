@@ -502,6 +502,13 @@ def _biasi_local(tit):
     return bairro, cidade, uf
 
 
+def _biasi_tipo(*pistas):
+    """Biasi só vende imóveis: tira a cidade do título (ex.: 'Lagoa do Carro') antes de classificar."""
+    limpas = [re.split(r"\s+-\s+[^-]+/[A-Z]{2}\s*$|\s+em\s+[^/]+/[A-Z]{2}\s*$", p or "")[0] for p in pistas]
+    t = classificar(*limpas)
+    return "Outros" if t == "Veículo" else t
+
+
 def biasi_parse(html):
     lotes = []
     for b in _blocos(html, '<a href="/sale/detail?id=')[0:]:
@@ -530,7 +537,7 @@ def biasi_parse(html):
         lotes.append({
             "id": f"biasi:{lid}", "site": "Biasi", "url": f"{BIASI}/sale/detail?id={lid}",
             "titulo": tit, "endereco": "", "bairro": bairro, "cidade": cidade, "uf": uf,
-            "tipo": classificar(tit), "tipo_site": "",
+            "tipo": _biasi_tipo(tit), "tipo_site": "",
             "imagem": img, "area": area, "area_txt": area_txt, "pracas": pracas,
             "ocupacao": "Desocupado" if re.search(r"desocupad", tit, re.I) else ("Ocupado" if re.search(r"\bocupad", tit, re.I) else ""),
             "comitente": "", "status": st, "lances": int(lan.group(1)) if lan else None,
@@ -566,6 +573,9 @@ def biasi_detalhe(html):
     if "area" not in d:
         desc = re.search(r"<strong>Descri[çc][ãa]o:\s*</strong>\s*<span>(.*?)</span>", html, re.S)
         a, txt = area_m2(texto(desc.group(1)) if desc else "")
+        if not a:  # lotes do Itaú: "com a área de 275,00 m²" no texto da descrição
+            ma = re.search(r"[áa]rea (?:total |constru[íi]da |privativa |[úu]til )?(?:de |com )?([\d\.]+(?:,\d+)?\s*m²)", t, re.I)
+            a, txt = area_m2(ma.group(1)) if ma else (None, "")
         if a:
             d["area"], d["area_txt"] = a, txt
     vi = re.search(r"Visitas\s*-\s*([\d\.]+)", t)
@@ -586,7 +596,7 @@ def _biasi_aplicar(l, d):
         if d.get(k):
             l[k] = d[k]
     if d.get("tipo_site"):
-        l["tipo"] = classificar(d["tipo_site"], l["titulo"])
+        l["tipo"] = _biasi_tipo(d["tipo_site"], l["titulo"])
     if d.get("endereco") and not l.get("bairro"):
         partes = [p.strip() for p in d["endereco"].split(",")]
         if len(partes) >= 3:

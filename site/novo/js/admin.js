@@ -23,7 +23,7 @@ const Admin = (() => {
     const link = linkConvite(codigo, email);
     const msg = tipo === "senha"
       ? `Oi, ${nome}! Seu código para criar uma nova senha no LeilãoTrack é ${codigo} (vale por 24 horas). Abra ${location.origin}${location.pathname}, toque em "Esqueci a senha" e use este código com o seu e-mail (${email}).`
-      : `Oi, ${nome}! Você foi convidado para o LeilãoTrack, que reúne os leilões de imóveis da Frazão, Zuk e Mega num lugar só.\n\nAbra este link para criar sua senha:\n${link}\n\nSeu código: ${codigo} (vale por 7 dias, use com o e-mail ${email}).`;
+      : `Oi, ${nome}! Você foi convidado para o LeilãoTrack, que reúne os leilões de imóveis da Frazão, Zuk, Mega e Biasi num lugar só.\n\nAbra este link para criar sua senha:\n${link}\n\nSeu código: ${codigo} (vale por 7 dias, use com o e-mail ${email}).`;
     $("#adm-codigo").innerHTML = `<div class="codigo-box"><div class="texto-ajuda"><b>${esc(titulo)}</b> para ${esc(nome)} · vale até ${esc(new Date(expira).toLocaleString("pt-BR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}))}</div>
       <div class="cod">${esc(codigo)}</div>
       <p class="texto-ajuda" style="margin-top:0">Este código aparece só agora. Envie para a pessoa por um canal seu:</p>

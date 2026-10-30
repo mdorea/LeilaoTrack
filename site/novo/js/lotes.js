@@ -254,7 +254,7 @@ function renderFiltros() {
   const selCid = f.cidades.filter(c => !cids.slice(0, 14).some(x => x[0] === c)).map(c => [c, null]);
   const vmax = f.vmax || VMAX;
   $("#corpo-filtros").innerHTML =
-    grupo("Sites", "sites", ["Frazão", "Zuk", "Mega"].map(s => [s, vivos.filter(l => l.site === s).length])) +
+    grupo("Sites", "sites", SITES.map(s => [s, vivos.filter(l => l.site === s).length])) +
     grupo("Tipo de bem", "tipos", contar(vivos, l => l.tipo)) +
     grupo("Praça", "pracas", ["1ª praça", "2ª praça", "Praça única"].map(p => [p, null])) +
     grupo("Ocupação", "ocup", ["Desocupado", "Ocupado", "Não informado"].map(p => [p, null])) +
