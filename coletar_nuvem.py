@@ -88,6 +88,18 @@ def sb_baixar(nome):
         return r.read()
 
 
+def _sb_erro(e):
+    """Texto do erro do Supabase (sem chaves), também como aviso visível no GitHub."""
+    corpo = ""
+    try:
+        corpo = e.read().decode("utf-8", "replace")[:300]
+    except Exception:
+        pass
+    msg = f"{e} {corpo}".replace(SB_KEY, "***") if SB_KEY else f"{e} {corpo}"
+    print(f"::error title=Supabase::{msg}", flush=True)
+    return msg
+
+
 def sb_apagar(nomes):
     req = urllib.request.Request(f"{SB_URL}/storage/v1/object/{SB_PASTA}", method="DELETE",
                                  data=json.dumps({"prefixes": nomes}).encode(),
@@ -136,7 +148,7 @@ def baixar_anterior(nome, padrao):
                 return {"lotes": _SB_ANTERIOR.get("lotes", []), "estado": _SB_ANTERIOR.get("estado", {})}
             return _SB_ANTERIOR.get("eventos", padrao)
         except Exception as e:
-            log(f"Supabase: sem dados anteriores ({e}); tentando a cópia antiga")
+            log(f"Supabase: sem dados anteriores ({_sb_erro(e) if getattr(e, 'code', 0) not in (400, 404) else e}); tentando a cópia antiga")
             _SB_ANTERIOR = {}
     if not URL_PUBLICADA or not CHAVE:
         return padrao
@@ -309,7 +321,7 @@ def main():
                 log(f"Supabase: não apaguei o arquivo antigo ({e})")
             log(f"Supabase: {len(bruto) // 1024} KB publicados no arquivo privado {novo[:14]}…")
         except Exception as e:
-            log(f"Supabase: ERRO ao publicar ({e})")
+            log(f"Supabase: ERRO ao publicar ({_sb_erro(e)})")
             if not CHAVE:
                 raise
     for nome, obj in (publicar.items() if CHAVE else []):
