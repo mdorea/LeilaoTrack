@@ -1,0 +1,12 @@
+name: Sonda (temporária)
+on:
+  workflow_dispatch:
+    inputs:
+      urls: {description: "URLs separadas por espaço", required: true}
+permissions: {contents: read}
+jobs:
+  sonda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: python3 .github/sonda/sonda.py ${{ inputs.urls }}
