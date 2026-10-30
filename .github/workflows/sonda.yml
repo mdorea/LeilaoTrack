@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - run: mkdir -p saida && python3 .github/sonda/sonda.py ${{ inputs.urls }} > saida/relatorio.txt 2>&1 || true
+      - run: pip install -q requests curl_cffi && mkdir -p saida && python3 .github/sonda/sonda.py > saida/relatorio.txt 2>&1 || true
       - name: guardar no ramo sonda
         run: |
           cd saida && git init -q -b sonda && git add -A
