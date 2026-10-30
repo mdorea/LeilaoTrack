@@ -355,6 +355,16 @@ def main():
     if len(novos_alerta) > 15:
         telegram(f"…e mais {len(novos_alerta) - 15} lotes novos no LeilãoTrack.")
     log(f"Pronto: {sum(1 for l in lotes.values() if l.get('ativo'))} lotes ativos")
+    # resumo visível na página da execução no GitHub (sem dados sensíveis)
+    novos_ev = sum(1 for e in eventos if e.get("quando") == AGORA_S)
+    tipos_ev = {}
+    for e in eventos:
+        if e.get("quando") == AGORA_S:
+            tipos_ev[e.get("tipo")] = tipos_ev.get(e.get("tipo"), 0) + 1
+    sites = " · ".join(f"{s}: {i.get('status', '?')} ({i.get('lotes', 0)} lotes)" for s, i in sites_info.items())
+    print(f"::notice title=Resumo da leitura::{sum(1 for l in lotes.values() if l.get('ativo'))} lotes ativos · "
+          f"{novos_ev} alertas novos {tipos_ev or ''} · {len(eventos)} alertas guardados · {sites}"
+          f" · publicado no Supabase: {'sim' if SB else 'não'}", flush=True)
 
 
 if __name__ == "__main__":
