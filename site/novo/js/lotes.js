@@ -7,17 +7,26 @@ const FILTRO0 = {sites: [], tipos: [], pracas: [], ocup: [], ufs: [], cidades: [
 const VMAX = 3000000;
 const CHAVES_LISTA = ["sites", "tipos", "pracas", "ocup", "ufs", "cidades"];
 
-function filtroSalvo() {
-  const f = Object.assign(JSON.parse(JSON.stringify(FILTRO0)), LS.get("filtro", {}));
+// cada aba (Início e Favoritos) guarda o próprio filtro
+const CHAVE_FILTRO = {inicio: "filtro", favoritos: "filtro_fav"};
+function filtroSalvo(aba = "inicio") {
+  const padrao = aba === "favoritos" ? {top: false} : {};
+  const f = Object.assign(JSON.parse(JSON.stringify(FILTRO0)), padrao, LS.get(CHAVE_FILTRO[aba], {}));
   for (const k of CHAVES_LISTA) if (!Array.isArray(f[k])) f[k] = []; else f[k] = f[k].filter(x => typeof x === "string").slice(0, 60);
   for (const k of ["vmin", "vmax", "dmin"]) f[k] = Math.max(0, Number(f[k]) || 0);
   if (!["", "hoje", "7", "30"].includes(f.prazo)) f.prazo = "";
   f.novos = !!f.novos; f.fecham = !!f.fecham; f.top = !!f.top;
   return f;
 }
-const S = {lotes: [], eventos: [], estado: {}, versao: null, filtro: filtroSalvo(),
+const S = {lotes: [], eventos: [], estado: {}, versao: null, filtros: {inicio: filtroSalvo("inicio"), favoritos: filtroSalvo("favoritos")},
+  modo: LS.get("modo") === "mapa" ? "mapa" : "lista",
   ordem: ORDENS.some(o => o[0] === LS.get("ordem")) ? LS.get("ordem") : "desconto",
   busca: "", aba: "inicio", lista: [], mostrados: 0, rascunho: null, cidadeBusca: "", top: null};
+
+Object.defineProperty(S, "filtro", {
+  get() { return this.filtros[this.aba === "favoritos" ? "favoritos" : "inicio"]; },
+  set(f) { this.filtros[this.aba === "favoritos" ? "favoritos" : "inicio"] = f; },
+});
 
 /* ---------------- dados (arquivo privado, só para quem está logado) ---------------- */
 async function lerJSON(buf) {
@@ -91,7 +100,7 @@ function ordenar(a) {
   return a.sort(by);
 }
 function qtdFiltros(f) { return CHAVES_LISTA.reduce((n, k) => n + (f[k].length ? 1 : 0), 0) + (f.vmin || (f.vmax && f.vmax < VMAX) ? 1 : 0) + (f.dmin ? 1 : 0) + (f.prazo ? 1 : 0); }
-function salvarFiltro() { LS.set("filtro", S.filtro); }
+function salvarFiltro() { LS.set(CHAVE_FILTRO[S.aba === "favoritos" ? "favoritos" : "inicio"], S.filtro); }
 
 /* ---------------- Top 15: triagem pelos dados do anúncio, no perfil de cada pessoa ---------------- */
 const RUIM_TOP = /direito|parte ideal|fra[çc][ãa]o|nua[ -]propriedade|usufruto|mea[çc][ãa]o|\d+(,\d+)?\s*%|cota parte|quinh/i;
@@ -143,8 +152,9 @@ function textoPerfil() {
 /* ---------------- lista ---------------- */
 function render() {
   if (S.aba !== "inicio" && S.aba !== "favoritos") return;
-  const base = S.aba === "favoritos" ? S.lotes.filter(l => l.fav) : S.lotes;
-  const f = S.filtro;
+  const fav = S.aba === "favoritos";
+  const base = fav ? S.lotes.filter(l => l.fav) : S.lotes;
+  const f = fav ? Object.assign({}, S.filtro, {novos: false, fecham: false, top: false}) : S.filtro;
   const top = f.top && S.aba === "inicio";
   S.top = null;
   if (top) {
@@ -161,11 +171,15 @@ function render() {
   $(".numeros").hidden = S.aba === "favoritos";
   const n = qtdFiltros(f); const b = $("#badge"); b.hidden = !n; b.textContent = n;
   $("#ordem-nome").textContent = ORDENS.find(o => o[0] === S.ordem)[1];
-  $("#titulo-lista").textContent = S.aba === "favoritos" ? "Favoritos" : top ? "Seu Top 15" : f.novos ? "Novidades" : f.fecham ? "Fecham em 48h" : "Lotes";
+  $("#titulo-lista").textContent = fav ? "Favoritos" : top ? "Seu Top 15" : f.novos ? "Novidades" : f.fecham ? "Fecham em 48h" : "Lotes";
   $("#qtd").textContent = `${S.lista.length.toLocaleString("pt-BR")} lotes`;
   $("#top-pref").hidden = !top; $("#top-pref-txt").textContent = textoPerfil();
   renderChips();
   S.mostrados = 0;
+  $("#grade").hidden = S.modo === "mapa"; $("#sentinela").hidden = S.modo === "mapa";
+  $("#mapa-box").hidden = S.modo !== "mapa"; $$("#modo button").forEach(b => b.classList.toggle("on", b.dataset.modo === S.modo));
+  if (top) $("#btn-ordem").hidden = true; else $("#btn-ordem").hidden = S.modo === "mapa";
+  if (S.modo === "mapa") { $("#grade").innerHTML = ""; Mapa.mostrar(S.lista); return; }
   $("#grade").innerHTML = top && S.lista.length ? `<div class="nota-top vidro"><b>Ranking automático</b>, refeito a cada leitura dos sites, no seu perfil e nos filtros que você escolher. Pesa desconto sobre a avaliação, preço por m², procura na cidade, venda de banco e ocupação. Ficam de fora direitos, frações e lotes que fecham em menos de 60 horas. É uma triagem: faça a perícia antes de dar lance.</div>` : "";
   maisCards();
   if (!S.lista.length) $("#grade").innerHTML = `<div class="vazio vidro">${!S.lotes.length ? "Ainda não há lotes. A primeira leitura dos sites pode levar alguns minutos." : S.aba === "favoritos" ? "Toque no ♡ de um lote para acompanhá-lo aqui." : top ? "Nenhum lote do seu perfil entrou no ranking agora. Toque em <b>Ajustar</b> para ampliar estados ou tipos." : "Nenhum lote com esses filtros."}</div>`;
@@ -232,10 +246,16 @@ async function alternarFav(id) {
 }
 let tBusca; $("#busca").addEventListener("input", e => { clearTimeout(tBusca); tBusca = setTimeout(() => { S.busca = e.target.value.slice(0, 80); render(); }, 180); });
 $("#n-ativos").addEventListener("click", () => { S.filtro.novos = false; S.filtro.fecham = false; S.filtro.top = false; salvarFiltro(); render(); });
-$("#n-top").addEventListener("click", () => { S.filtro.top = !S.filtro.top; S.filtro.novos = false; S.filtro.fecham = false; salvarFiltro(); render(); window.scrollTo({top: 0, behavior: "smooth"}); });
-$("#n-novos").addEventListener("click", () => { S.filtro.novos = !S.filtro.novos; S.filtro.fecham = false; S.filtro.top = false; salvarFiltro(); render(); });
-$("#n-fecham").addEventListener("click", () => { S.filtro.fecham = !S.filtro.fecham; S.filtro.novos = false; S.filtro.top = false; salvarFiltro(); render(); });
+$("#n-top").addEventListener("click", () => { S.filtro.top = true; S.filtro.novos = false; S.filtro.fecham = false; salvarFiltro(); render(); window.scrollTo({top: 0, behavior: "smooth"}); });
+$("#n-novos").addEventListener("click", () => { S.filtro.novos = true; S.filtro.fecham = false; S.filtro.top = false; salvarFiltro(); render(); });
+$("#n-fecham").addEventListener("click", () => { S.filtro.fecham = true; S.filtro.novos = false; S.filtro.top = false; salvarFiltro(); render(); });
 $("#top-pref-ajustar").addEventListener("click", () => abrirPref(false));
+$("#modo").addEventListener("click", e => { const b = e.target.closest("[data-modo]"); if (!b || b.dataset.modo === S.modo) return; S.modo = b.dataset.modo; LS.set("modo", S.modo); render();
+  if (S.modo === "mapa") requestAnimationFrame(() => { const y = $("#mapa-box").getBoundingClientRect().top + scrollY - 70; window.scrollTo({top: Math.max(0, y), behavior: "smooth"}); }); });
+// a marca no topo sempre volta para o início
+function voltarInicio() { if (S.aba !== "inicio") trocarAba("inicio"); window.scrollTo({top: 0, behavior: "smooth"}); }
+$("#marca").addEventListener("click", voltarInicio);
+$("#marca").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); voltarInicio(); } });
 
 /* ---------------- folha de filtros ---------------- */
 $("#btn-filtros").addEventListener("click", () => { S.rascunho = JSON.parse(JSON.stringify(S.filtro)); S.cidadeBusca = ""; renderFiltros(); abrir("#folha-filtros"); });
@@ -297,7 +317,7 @@ $("#corpo-filtros").addEventListener("click", e => {
   if (b.dataset.k && b.dataset.k !== "ufs") { const on = f[b.dataset.k].includes(b.dataset.v); b.classList.toggle("on", on); b.classList.toggle("vidro", !on); clearTimeout(window._ct); window._ct = setTimeout(contarRascunho, 60); return; }
   const sc = $("#corpo-filtros").scrollTop; renderFiltros(); $("#corpo-filtros").scrollTop = sc;
 });
-$("#limpar").addEventListener("click", () => { S.rascunho = Object.assign(JSON.parse(JSON.stringify(FILTRO0)), {novos: S.filtro.novos, fecham: S.filtro.fecham, top: S.filtro.top}); renderFiltros(); });
+$("#limpar").addEventListener("click", () => { S.rascunho = Object.assign(JSON.parse(JSON.stringify(FILTRO0)), S.aba === "favoritos" ? {top: false} : {novos: S.filtro.novos, fecham: S.filtro.fecham, top: S.filtro.top}); renderFiltros(); });
 $("#aplicar").addEventListener("click", () => { S.filtro = S.rascunho; salvarFiltro(); fechar(); render(); window.scrollTo({top: 0, behavior: "smooth"}); });
 
 /* ---------------- ordenação ---------------- */
@@ -308,6 +328,13 @@ $("#btn-ordem").addEventListener("click", () => {
 $("#corpo-ordem").addEventListener("click", e => { const b = e.target.closest("[data-o]"); if (!b) return; S.ordem = b.dataset.o; LS.set("ordem", S.ordem); setTimeout(() => { fechar(); render(); }, 120); b.parentNode.querySelectorAll(".opcao").forEach(o => o.classList.toggle("on", o === b)); });
 
 /* ---------------- ficha do lote ---------------- */
+// endereço para o Google Maps: só texto do anúncio, sem dados pessoais; abre a busca do próprio Google
+function linkMaps(l) {
+  const partes = [l.endereco, l.bairro && !(l.endereco || "").includes(l.bairro) ? l.bairro : "", l.cidade && !(l.endereco || "").includes(l.cidade) ? l.cidade : "", l.uf]
+    .map(x => String(x || "").replace(/\s+/g, " ").trim()).filter(Boolean);
+  if (!l.cidade && !l.endereco) return "";
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(partes.join(", ").slice(0, 250));
+}
 function abrirLote(id) {
   const l = S.lotes.find(x => x.id === id); if (!l) return;
   const pr = (Array.isArray(l.pracas) ? l.pracas : []).map(p => `<div class="${p.data && p.data < fmtLocal() ? "praca-passada" : ""}"><span>${esc(pracaCurta(p.nome))} · ${esc(fmtData(p.data))}</span><span>${fmtBRL(p.valor)}</span></div>`).join("");
@@ -321,6 +348,7 @@ function abrirLote(id) {
     <div class="det-site"><i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i><span style="color:${SITE_COR[l.site] || "inherit"}">${esc(SITE_NOME[l.site] || l.site)}</span>${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
     <h3 class="det-tit">${esc(l.titulo)}</h3>
     <div class="det-end">${esc([l.endereco, l.bairro && !(l.endereco || "").includes(l.bairro) ? l.bairro : "", l.cidade && `${l.cidade}/${l.uf}`].filter(Boolean).join(" · "))}</div>
+    ${linkMaps(l) ? `<a class="btn-maps vidro" href="${esc(linkMaps(l))}" target="_blank" rel="noopener noreferrer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Ver no Google Maps</a>` : ""}
     <div class="caixa vidro">
       <div class="r"><div><div class="rot">${esc(pracaCurta(l.praca_atual))} · lance mínimo</div><div class="valor-grande">${fmtBRL(l.valor)}</div></div>${desc > 0 ? `<span class="pill">-${desc}% da 1ª praça</span>` : ""}</div>
       <div class="sep"></div>

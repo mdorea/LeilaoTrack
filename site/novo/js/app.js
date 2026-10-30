@@ -144,7 +144,7 @@ $("#pref-salvar").addEventListener("click", async () => {
   try {
     await CONTA.salvarPrefs(rascPref.ufs, rascPref.tipos);
     $("#tela-pref").hidden = true; _rankCache = {k: null, v: null};
-    S.filtro.top = true; salvarFiltro();
+    S.filtros.inicio.top = true; LS.set("filtro", S.filtros.inicio);
     if (S.aba !== "inicio") trocarAba("inicio"); else render();
     atualizarBadge(); window.scrollTo({top: 0}); if (!prefPrimeiro) toast("Preferências salvas");
   } catch (er) { $("#pref-erro").textContent = "Não consegui salvar agora. Confira a conexão."; }

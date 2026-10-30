@@ -404,3 +404,29 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .beta-caixa p b{color:var(--tx)}
 .beta-caixa .beta-mini{font-size:12.5px;margin-bottom:18px}
 .beta-caixa .btn-grande:disabled{opacity:.55;cursor:not-allowed}
+
+/* marca clicável, chave Lista | Mapa, mapa e Google Maps */
+.marca{cursor:pointer;width:max-content;border-radius:14px;outline-offset:4px}
+.modo{display:flex;padding:3px;border-radius:12px;margin-left:auto}
+.modo button{height:28px;padding:0 10px;border-radius:9px;font-size:12px;font-weight:600;color:var(--mu);display:flex;align-items:center;gap:6px}
+.modo button.on{background:var(--chip-on-bg);color:var(--chip-on-tx)}
+.cab .ordem{flex:none}
+.mapa-box{position:relative;margin-bottom:12px;isolation:isolate;z-index:0}
+.mapa-box[hidden]{display:none}
+.mapa{height:calc(100dvh - 330px);min-height:380px;border-radius:22px;overflow:hidden;border:1px solid var(--line);background:var(--glass);z-index:0}
+.mapa-nota{position:absolute;left:12px;bottom:12px;z-index:500;padding:7px 12px;border-radius:12px;font-size:12px;color:var(--mu);pointer-events:none;max-width:calc(100% - 70px)}
+.mapa-nota b{color:var(--tx)}
+.bolha-ic{background:none;border:0}
+.bolha{display:grid;place-items:center;border-radius:50%;color:#fff;font-weight:700;font-size:12.5px;font-family:var(--font);border:2px solid #fff;cursor:pointer;transition:transform .15s}
+.bolha:hover{transform:scale(1.08)}
+.bolha.poucos{background:#7B5CE0;box-shadow:0 0 0 6px rgba(123,92,224,.28)}
+.bolha.varios{background:#F2A23A;box-shadow:0 0 0 6px rgba(242,162,58,.3)}
+.bolha.muitos{background:#E26A2C;box-shadow:0 0 0 7px rgba(226,106,44,.3)}
+.bolha-nome{position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:4px;white-space:nowrap;font-size:11px;font-weight:600;color:#3A3456;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;pointer-events:none;font-family:var(--font)}
+[data-tema="escuro"] .bolha-nome{color:#F2EEFF;text-shadow:0 0 3px #000,0 0 3px #000}
+.leaflet-container{font-family:var(--font)}
+.leaflet-control-attribution{font-size:9.5px}
+.grade-cidade{grid-template-columns:1fr}
+.btn-maps{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px;border-radius:17px;font-size:12.5px;font-weight:600;color:var(--tx);text-decoration:none;margin:-6px 0 14px}
+.cab h2{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:480px){.modo .modo-txt{display:none}.modo button{padding:0 9px}.cab{gap:8px}}

@@ -25,7 +25,7 @@
 <div class="fundo"></div>
 
 <main class="app" id="app" hidden>
-  <div class="marca">
+  <div class="marca" id="marca" role="button" tabindex="0" aria-label="Voltar ao início">
     <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></svg></span>
     <div class="marca-txt"><b>Leilão<span>Track</span></b><small>Todos os leilões. Um só lugar.</small></div>
   </div>
@@ -57,6 +57,10 @@
     </div>
     <div class="cab">
       <h2><span id="titulo-lista">Lotes</span> <small id="qtd"></small></h2>
+      <div class="modo vidro" id="modo" role="group" aria-label="Ver como">
+        <button data-modo="lista" class="on" aria-label="Ver em lista"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="modo-txt">Lista</span></button>
+        <button data-modo="mapa" aria-label="Ver no mapa"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/></svg><span class="modo-txt">Mapa</span></button>
+      </div>
       <button class="ordem vidro" id="btn-ordem">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/></svg>
         <span id="ordem-nome">Maior desconto</span>
@@ -64,6 +68,10 @@
       </button>
     </div>
     <div class="top-pref" id="top-pref" hidden><span id="top-pref-txt"></span><button id="top-pref-ajustar">Ajustar</button></div>
+    <div class="mapa-box" id="mapa-box" hidden>
+      <div class="mapa" id="mapa" aria-label="Mapa dos lotes"></div>
+      <div class="mapa-nota vidro" id="mapa-nota"></div>
+    </div>
     <div class="grade" id="grade"></div>
     <div class="mais" id="sentinela"></div>
   </section>
@@ -192,6 +200,12 @@
   <div class="folha-cab"><h3>Ordenar por</h3></div>
   <div class="folha-corpo" id="corpo-ordem"></div>
 </div>
+<div class="folha" id="folha-cidade" role="dialog" aria-label="Lotes da cidade">
+  <div class="alca"></div>
+  <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="folha-cab"><div style="min-width:0;padding-right:44px"><h3 id="cidade-tit">Cidade</h3><p class="texto-ajuda" id="cidade-sub" style="margin:2px 0 0"></p></div></div>
+  <div class="folha-corpo"><div class="grade grade-cidade" id="cidade-lotes"></div></div>
+</div>
 <div class="folha" id="folha-lote" role="dialog" aria-label="Lote">
   <div class="alca"></div>
   <button class="btn-fechar" data-fechar aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
@@ -220,6 +234,7 @@
 <script src="js/base.js?v=__VERSAO__"></script>
 <script src="js/conta.js?v=__VERSAO__"></script>
 <script src="js/calc.js?v=__VERSAO__"></script>
+<script src="js/mapa.js?v=__VERSAO__"></script>
 <script src="js/lotes.js?v=__VERSAO__"></script>
 <script src="js/ia.js?v=__VERSAO__"></script>
 <div class="beta-fundo" id="beta-aviso" hidden>
