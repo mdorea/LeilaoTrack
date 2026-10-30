@@ -188,8 +188,27 @@ function trocarAba(a) {
   $(".topo").hidden = a === "pericia" || a === "ajustes";
   window.scrollTo(0, 0);
   if (a === "alertas") { _vistoVisita = CONTA.prefs.alertas_visto || ""; renderAlertas(); }
-  else { _vistoVisita = null; if (a === "ajustes") renderAjustes(); else if (a === "pericia") Pericia.iniciar(); else render(); }
+  else { _vistoVisita = null; if (a === "ajustes") renderAjustes(); else if (a === "pericia") { Pericia.iniciar(); avisoBeta(); } else render(); }
 }
+
+/* aviso BETA: aparece toda vez que a Perícia é aberta; o botão só libera após 5s */
+let _betaTimer = null;
+function avisoBeta() {
+  const fundo = $("#beta-aviso"), ok = $("#beta-ok");
+  clearInterval(_betaTimer);
+  let falta = 5; ok.disabled = true; ok.textContent = `Aguarde ${falta}s`; fundo.hidden = false;
+  document.body.style.overflow = "hidden";
+  _betaTimer = setInterval(() => {
+    falta -= 1;
+    if (falta > 0) { ok.textContent = `Aguarde ${falta}s`; return; }
+    clearInterval(_betaTimer); ok.disabled = false; ok.textContent = "Entendi, continuar"; ok.focus();
+  }, 1000);
+}
+$("#beta-ok").addEventListener("click", () => {
+  if ($("#beta-ok").disabled) return;
+  $("#beta-aviso").hidden = true; document.body.style.overflow = "";
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#beta-aviso").hidden) e.preventDefault(); }, true);
 
 /* ---------------- ajustes ---------------- */
 function statusSites(est) {

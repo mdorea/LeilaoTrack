@@ -391,3 +391,15 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .prov .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--mu2);display:grid;place-items:center;flex:none}
 .prov.on .radio{border-color:var(--tx)}.prov.on .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--acc)}
 #tela-pref .chip.on{background:var(--chip-on-bg);color:var(--chip-on-tx)}
+
+/* selo BETA da perícia e aviso ao abrir */
+.nav-beta{position:absolute;top:2px;left:calc(50% + 6px);padding:1px 5px;border-radius:6px;background:var(--acc);color:#fff;font-size:8.5px;font-weight:700;letter-spacing:.5px;line-height:13px}
+.beta-fundo{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:var(--scrim);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.beta-fundo[hidden]{display:none}
+.beta-caixa{width:min(420px,100%);padding:26px 22px 20px;border-radius:24px;background:var(--sheet);border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.3);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);text-align:center}
+.beta-selo{display:inline-block;padding:3px 10px;border-radius:8px;background:var(--acc);color:#fff;font-size:11px;font-weight:700;letter-spacing:1px}
+.beta-caixa h2{margin:12px 0 10px;font-size:20px}
+.beta-caixa p{margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--mu)}
+.beta-caixa p b{color:var(--tx)}
+.beta-caixa .beta-mini{font-size:12.5px;margin-bottom:18px}
+.beta-caixa .btn-grande:disabled{opacity:.55;cursor:not-allowed}
