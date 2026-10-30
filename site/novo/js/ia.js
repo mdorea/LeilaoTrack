@@ -6,10 +6,10 @@ const IA = (() => {
   const PROVS = {
     claude: {nome: "Claude", empresa: "Anthropic", selo: "melhor qualidade",
       desc: "Cerca de R$ 1 a 2 por perícia, cobrado na sua conta da Anthropic.",
-      link: "https://console.anthropic.com/settings/keys", prefixo: /^sk-ant-[A-Za-z0-9_-]{20,}$/},
+      link: "https://console.anthropic.com/settings/keys", prefixo: /^[A-Za-z0-9_.\-]{20,300}$/},
     gemini: {nome: "Gemini", empresa: "Google", selo: "tem chave grátis",
       desc: "A chave gratuita tem limite diário de uso; bom para começar.",
-      link: "https://aistudio.google.com/apikey", prefixo: /^AIza[0-9A-Za-z_-]{30,}$/},
+      link: "https://aistudio.google.com/apikey", prefixo: /^[A-Za-z0-9_.\-]{20,300}$/},
   };
   const DB = "lt-ia", ST = "itens";
   let memoria = null; // usado se o navegador não deixar gravar (modo privado)
@@ -160,7 +160,7 @@ const IA = (() => {
     desenhar(regCache);
     abrir("#folha-ia");
   }
-  function desenhar(reg, msg) {
+  function desenhar(reg, msg, digitado) {
     const p = PROVS[escolha];
     $("#corpo-ia").innerHTML = `
       <p class="texto-ajuda" style="margin-top:0">Escolha qual IA vai fazer as suas perícias. O custo vai direto para a sua conta nela.</p>
@@ -176,6 +176,7 @@ const IA = (() => {
         : "entre em aistudio.google.com com sua conta Google, toque em Get API key › Create API key e copie a chave que começa com AIza. Não precisa cartão para o plano gratuito."}</p>
       <a class="btn-sec vidro" style="display:grid;place-items:center;text-decoration:none;color:var(--tx)" href="${p.link}" target="_blank" rel="noopener noreferrer">Abrir a página de chaves da ${esc(p.empresa)} ›</a>
       ${reg ? `<button class="btn-sec vidro" id="ia-apagar" style="color:var(--hot)">Apagar a chave deste aparelho</button>` : ""}`;
+    if (digitado) $("#ia-chave").value = digitado;
   }
   document.addEventListener("click", async e => {
     if (!e.target.closest("#corpo-ia")) return;
@@ -183,8 +184,9 @@ const IA = (() => {
     if (pb) { escolha = pb.dataset.prov; desenhar(regCache); return; }
     if (e.target.closest("#ia-apagar")) { await apagarTudo(); regCache = null; toast("Chave apagada deste aparelho"); desenhar(null); return; }
     if (e.target.closest("#ia-testar")) {
-      const bt = $("#ia-testar"); const segredo = $("#ia-chave").value.trim();
-      if (!PROVS[escolha].prefixo.test(segredo)) { desenhar(regCache, {ok: false, t: escolha === "claude" ? "Essa não parece uma chave da Anthropic. Ela começa com sk-ant-." : "Essa não parece uma chave do Google AI Studio. Ela começa com AIza."}); return; }
+      const bt = $("#ia-testar"); const segredo = $("#ia-chave").value.replace(/\s+/g, "");
+      if (!segredo) { desenhar(regCache, {ok: false, t: "Cole a sua chave no campo acima e toque em Testar e salvar."}); return; }
+      if (!PROVS[escolha].prefixo.test(segredo)) { desenhar(regCache, {ok: false, t: "Essa chave tem caracteres que não são esperados. Copie de novo, só a chave, sem texto em volta."}, segredo); return; }
       bt.disabled = true; bt.textContent = "Testando a chave…";
       try {
         const m = escolha === "claude" ? await modelosClaude(segredo) : await modelosGemini(segredo);
@@ -193,7 +195,7 @@ const IA = (() => {
         regCache = await ler();
         desenhar(regCache, {ok: true, t: gravou ? "Chave funcionando e salva neste aparelho." : "Chave funcionando. Este navegador não deixa guardar: ela vale só até fechar a página."});
         if (aposSalvar) { const f = aposSalvar; aposSalvar = null; setTimeout(() => { fechar(); f(); }, 900); }
-      } catch (er) { desenhar(regCache, {ok: false, t: er.message || "Não consegui testar a chave agora."}); }
+      } catch (er) { desenhar(regCache, {ok: false, t: er.message || "Não consegui testar a chave agora."}, segredo); }
     }
   });
 
