@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Coletores dos sites de leilão (Frazão, Portal Zuk e Mega Leilões).
+"""Coletores dos sites de leilão (Frazão, Portal Zuk, Mega Leilões e Biasi Leilões).
 
 Só lê as páginas públicas de listagem, com pausas entre as requisições.
 Usa apenas a biblioteca padrão do Python (não precisa instalar nada).
@@ -478,8 +478,185 @@ def coletar_mega(http, log, limite=4000, categorias=("imoveis",), completo=True)
     return list(vistos.values()), ok
 
 
+# ---------------------------------------------------------------- Biasi Leilões
+BIASI = "https://www.biasileiloes.com.br"
+BIASI_DETALHES_POR_LEITURA = 150   # páginas de detalhe por ciclo (o resto fica para os próximos)
+
+
+def _biasi_local(tit):
+    """'Apartamento - Jardim Capitão - Sorocaba/SP' ou 'Casa no Centro em Muriaé/MG' -> (bairro, cidade, uf)."""
+    t = re.sub(r"\s+", " ", tit or "").strip()
+    partes = [p.strip() for p in t.split(" - ")]
+    ultimo = partes[-1]
+    if " em " in ultimo:
+        ultimo = ultimo.rsplit(" em ", 1)[1]
+    m = re.search(r"([^/]+?)\s*/\s*([A-Z]{2})\s*$", ultimo)
+    cidade, uf = (m.group(1).strip(), m.group(2)) if m and m.group(2) in UFS else ("", "")
+    bairro = ""
+    if len(partes) >= 3:
+        bairro = partes[-2]
+    else:
+        mb = re.search(r"\b(?:no|na|nos|nas|em)\s+(?:Bairro\s+|Setor\s+)?(.+?)(?:\s+em\s+[^/]+/[A-Z]{2})?$", partes[0])
+        if mb:
+            bairro = mb.group(1).strip(' "')
+    return bairro, cidade, uf
+
+
+def biasi_parse(html):
+    lotes = []
+    for b in _blocos(html, '<a href="/sale/detail?id=')[0:]:
+        m = re.match(r'<a href="/sale/detail\?id=(\d+)"', b)
+        if not m:
+            continue
+        lid = m.group(1)
+        tit = texto((re.search(r'class="card-title[^"]*"[^>]*>(.*?)</h5>', b, re.S) or [None, ""])[1])
+        if not tit:
+            continue
+        img = re.search(r"background-image:\s*url\(([^)\"']+)", b)
+        img = img.group(1).strip() if img else ""
+        pracas = []
+        for mm in re.finditer(r'<div class="([^"]*)">\s*<span[^>]*>\s*(\d)º Leil[ãa]o:\s*</span>\s*<span[^>]*>([^<]*)<', b):
+            v = dinheiro(mm.group(3))
+            if v:
+                pracas.append({"nome": f"{mm.group(2)}ª praça", "data": None, "valor": v, "_passou": "expired" in mm.group(1)})
+        if not pracas:
+            v = dinheiro(texto((re.search(r'class="price-leiloes">(.*?)</div>\s*</div>', b, re.S) or [None, ""])[1]))
+            if v:
+                pracas.append({"nome": "Praça única", "data": None, "valor": v, "_passou": False})
+        lan = re.search(r"(\d+)\s*Lances?\b", b)
+        st = texto((re.search(r'class="label-md status-[a-z]+">(.*?)</div>', b, re.S) or [None, ""])[1])
+        bairro, cidade, uf = _biasi_local(tit)
+        area, area_txt = area_m2(tit)
+        lotes.append({
+            "id": f"biasi:{lid}", "site": "Biasi", "url": f"{BIASI}/sale/detail?id={lid}",
+            "titulo": tit, "endereco": "", "bairro": bairro, "cidade": cidade, "uf": uf,
+            "tipo": classificar(tit), "tipo_site": "",
+            "imagem": img, "area": area, "area_txt": area_txt, "pracas": pracas,
+            "ocupacao": "Desocupado" if re.search(r"desocupad", tit, re.I) else ("Ocupado" if re.search(r"\bocupad", tit, re.I) else ""),
+            "comitente": "", "status": st, "lances": int(lan.group(1)) if lan else None,
+        })
+    return lotes
+
+
+def biasi_detalhe(html):
+    """Datas das praças, endereço, área, ocupação e tipo, da página do lote."""
+    t = texto(html)
+    d = {"datas": {}}
+    for mm in re.finditer(r"(\d)º Leil[ãa]o dia (\d{2}/\d{2}/\d{4}\s*às\s*\d{1,2}h\d{2})", t):
+        d["datas"][mm.group(1)] = data_iso(mm.group(2))
+    mm = re.search(r"\bData:\s*(\d{2}/\d{2}/\d{4}\s*às\s*\d{1,2}h\d{2})", t)
+    if mm and not d["datas"]:
+        d["datas"]["0"] = data_iso(mm.group(1))
+    og = re.search(r'<meta property="og:description" content="([^"]*)"', html)
+    if og:
+        d["endereco"] = _html.unescape(og.group(1)).strip()
+    oc = re.search(r'class="situacao-label">([^<]*)<', html)
+    if oc and texto(oc.group(1)):
+        d["ocupacao"] = texto(oc.group(1)).capitalize()
+    tp = re.search(r"<strong>Tipo do Im[óo]vel:\s*</strong>\s*<span>([^<]*)<", html)
+    if tp:
+        d["tipo_site"] = texto(tp.group(1)).capitalize()
+    for rot in ("Privativa", "Constru[íi]da", "Total", "do Terreno", "Útil"):
+        ma = re.search(r"<strong>[ÁA]rea " + rot + r"[^<]*:\s*</strong>\s*<span>([^<]*)<", html)
+        if ma:
+            a, txt = area_m2(texto(ma.group(1)))
+            if a:
+                d["area"], d["area_txt"] = a, txt
+                break
+    if "area" not in d:
+        desc = re.search(r"<strong>Descri[çc][ãa]o:\s*</strong>\s*<span>(.*?)</span>", html, re.S)
+        a, txt = area_m2(texto(desc.group(1)) if desc else "")
+        if a:
+            d["area"], d["area_txt"] = a, txt
+    vi = re.search(r"Visitas\s*-\s*([\d\.]+)", t)
+    if vi:
+        d["visitas"] = int(vi.group(1).replace(".", ""))
+    alvo = re.search(r"Valor alvo do Banco para Venda:\s*(R\$\s*[\d\.,]+)", t)
+    if alvo:
+        d["valor_alvo"] = dinheiro(alvo.group(1))
+    return d
+
+
+def _biasi_aplicar(l, d):
+    datas = d.get("datas") or {}
+    for i, p in enumerate(l["pracas"]):
+        n = p["nome"][0] if p["nome"][0].isdigit() else "0"
+        p["data"] = datas.get(n) or (datas.get("0") if len(l["pracas"]) == 1 else None) or datas.get(str(i + 1))
+    for k in ("endereco", "ocupacao", "tipo_site", "area", "area_txt", "visitas", "valor_alvo"):
+        if d.get(k):
+            l[k] = d[k]
+    if d.get("tipo_site"):
+        l["tipo"] = classificar(d["tipo_site"], l["titulo"])
+    if d.get("endereco") and not l.get("bairro"):
+        partes = [p.strip() for p in d["endereco"].split(",")]
+        if len(partes) >= 3:
+            l["bairro"] = partes[-2]
+
+
+def coletar_biasi(http, log, anteriores=None, limite=4000, completo=True):
+    anteriores = anteriores or {}
+    h = http.get(BIASI + "/")
+    m = re.search(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"', h)
+    tok = m.group(1) if m else ""
+    slugs = []
+    for s in re.findall(r'href="/leiloes/([^"/?#]+)"', h):
+        s = urllib.parse.unquote(s)
+        if s not in slugs:
+            slugs.append(s)
+
+    def lista(slug):
+        q = urllib.parse.urlencode({"categoria": "", "subcategoria": "", "term": "", "start": 0, "limit": 1000, "listaId": "",
+                                    "slug": slug, "buscaImovel": "false", "estado": "", "bairro": "", "cidade": "",
+                                    "segmento": "", "uf": "", "cid": "", "__RequestVerificationToken": tok})
+        return http.get(f"{BIASI}/Sale/LotListSearch?{q}", {"X-Requested-With": "XMLHttpRequest", "Referer": BIASI + "/"})
+
+    pagina = lista("")
+    total = re.search(r'total="(\d+)"', pagina)
+    lotes = {l["id"]: l for l in biasi_parse(pagina)}
+    # nome do vendedor (banco): cada vendedor tem a própria lista
+    for s in slugs[:12]:
+        try:
+            ids = set(re.findall(r"/sale/detail\?id=(\d+)", lista(s)))
+        except Exception as e:
+            log(f"Biasi: falha ao ler a lista de {s}: {e}")
+            continue
+        nome = {"itau": "Itaú", "santander": "Santander"}.get(s.lower(), s.replace("-", " ").title())
+        for i in ids:
+            if f"biasi:{i}" in lotes:
+                lotes[f"biasi:{i}"]["comitente"] = nome
+    agora = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    feitos = 0
+    for l in lotes.values():
+        ant = anteriores.get(l["id"]) or {}
+        det = ant.get("_det")
+        datas_ant = [p.get("data") for p in ant.get("pracas", []) if p.get("data")]
+        precisa = not det or len(ant.get("pracas", [])) != len(l["pracas"]) or (datas_ant and max(datas_ant) < agora)
+        if precisa and feitos < BIASI_DETALHES_POR_LEITURA:
+            try:
+                det = biasi_detalhe(http.get(l["url"], {"Referer": BIASI + "/"}))
+                feitos += 1
+            except Exception as e:
+                log(f"Biasi: falha no lote {l['id']}: {e}")
+        if det:
+            l["_det"] = det
+            _biasi_aplicar(l, det)
+        if not l.get("comitente") and ant.get("comitente"):
+            l["comitente"] = ant["comitente"]
+        tem_data = any(p.get("data") for p in l["pracas"])
+        passou = [p.pop("_passou", False) for p in l["pracas"]]
+        finalizar(l)
+        if not tem_data:  # ainda sem a página de detalhe: praça atual = a que não passou
+            atual = next((p for p, x in zip(l["pracas"], passou) if not x), l["pracas"][-1] if l["pracas"] else None)
+            if atual:
+                l["valor"], l["praca_atual"], l["encerrado"] = atual["valor"], atual["nome"], False
+    log(f"Biasi: {len(lotes)} lotes (site diz {total.group(1) if total else '?'}), {feitos} páginas de detalhe")
+    ok = bool(lotes) and (not total or len(lotes) >= int(total.group(1)) * 0.9)
+    return list(lotes.values()), ok
+
+
 SITES = {
     "Mega": coletar_mega,
     "Frazão": coletar_frazao,
     "Zuk": coletar_zuk,
+    "Biasi": coletar_biasi,
 }
