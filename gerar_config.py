@@ -24,7 +24,8 @@ def papel_jwt(k):
 
 ok = bool(re.fullmatch(r"https://[a-z0-9-]+\.supabase\.co", url)) and len(chave) > 30
 if chave.startswith("sb_secret_") or papel_jwt(chave) == "service_role":
-    sys.exit("ERRO: SUPABASE_ANON_KEY recebeu a chave SECRETA. Use a chave pública (anon ou publishable).")
+    print("::error title=Config::SUPABASE_ANON_KEY recebeu a chave SECRETA. Use a chave pública (sb_publishable_).", flush=True)
+    sys.exit(1)
 if not re.fullmatch(r"[A-Za-z0-9._-]+", chave or "-"):
     ok = False
 conteudo = ("/* gerado automaticamente na publicação */\n"
@@ -38,4 +39,7 @@ if ok:
         h = f.read()
     with open(pagina, "w", encoding="utf-8") as f:
         f.write(h.replace("connect-src 'self' https://*.supabase.co", f"connect-src 'self' {url}"))
+tipo = "sb_publishable_" if chave.startswith("sb_publishable_") else ("JWT " + papel_jwt(chave)) if chave.startswith("eyJ") else "desconhecido"
+if not ok:
+    print(f"::warning title=Config::app novo sem configuração (url ok: {bool(re.fullmatch(r'https://[a-z0-9-]+\\.supabase\\.co', url))}, chave: {tipo})", flush=True)
 print("config do app novo:", "pronta" if ok else "ainda sem Supabase (o site mostra 'em configuração')")
