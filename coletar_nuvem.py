@@ -68,7 +68,10 @@ def decifrar(env):
 
 
 # ---- versão multiusuário: lotes num arquivo privado do Supabase (só membros leem) ----
-SB_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+SB_URL = os.environ.get("SUPABASE_URL", "").strip()
+# aceita o endereço com ou sem "/rest/v1" no fim: usa só https://<projeto>.supabase.co
+_m = re.match(r"(https://[a-z0-9-]+\.supabase\.co)", SB_URL)
+SB_URL = _m.group(1) if _m else SB_URL.rstrip("/")
 SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 SB = bool(SB_URL and SB_KEY and SB_URL.startswith("https://"))
 SB_PASTA = "privado"

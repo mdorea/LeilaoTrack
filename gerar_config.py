@@ -7,7 +7,9 @@ import os
 import re
 import sys
 
-url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+url = os.environ.get("SUPABASE_URL", "").strip()
+_m = re.match(r"(https://[a-z0-9-]+\.supabase\.co)", url)  # tira "/rest/v1" ou outra coisa do fim
+url = _m.group(1) if _m else url.rstrip("/")
 chave = os.environ.get("SUPABASE_ANON_KEY", "").strip()
 destino = os.path.join(os.path.dirname(os.path.abspath(__file__)), "site", "novo", "js", "config.js")
 
