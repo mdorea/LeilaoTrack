@@ -54,7 +54,7 @@ $("#f-entrar").addEventListener("submit", async e => {
   const email = $("#e-email").value.trim().toLowerCase(), senha = $("#e-senha").value; $("#e-erro").textContent = "";
   if (!emailOk(email) || !senha) { $("#e-erro").textContent = "Preencha o e-mail e a senha."; tremer("#f-entrar"); return; }
   const bt = $("#f-entrar button[type=submit]"); bt.disabled = true; bt.textContent = "Entrando…";
-  try { await SB.entrar(email, senha, $("#e-lembrar").checked); $("#e-senha").value = ""; await entrarNoApp(); }
+  try { await SB.entrar(email, senha, $("#e-lembrar").checked); $("#e-senha").value = ""; await entrarNoApp(senha); }
   catch (er) { $("#e-erro").textContent = mensagemAuth(er); tremer("#f-entrar"); }
   bt.disabled = false; bt.textContent = "Entrar";
 });
@@ -90,7 +90,7 @@ $("#f-convite").addEventListener("submit", async e => {
         bt.textContent = "Criando sua conta…";
         const s = await SB.cadastrar(email, s1, codigo);
         $("#c-senha").value = ""; $("#c-senha2").value = "";
-        if (s) { await entrarNoApp(); bt.disabled = false; return; }
+        if (s) { await entrarNoApp(s1); bt.disabled = false; return; }
         mostrarAcesso("entrar", {email, erro: "Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre."});
       }
     }
@@ -152,7 +152,7 @@ $("#pref-salvar").addEventListener("click", async () => {
 });
 
 /* ---------------- entrar no app ---------------- */
-async function entrarNoApp() {
+async function entrarNoApp(senha) {
   mostrarCarregando("login");
   try {
     if (!(await CONTA.carregar())) {
@@ -163,6 +163,8 @@ async function entrarNoApp() {
     if (!SB.usuario) { mostrarAcesso("entrar", {erro: "Sua sessão terminou. Entre de novo."}); return; }
     mostrarAcesso("entrar", {erro: mensagemAuth(e)}); return;
   }
+  // com a senha em mãos, prepara a chave que abre a sua chave de IA guardada na conta (em qualquer aparelho)
+  if (senha) await IA.prepararCofre(senha).catch(() => {});
   $("#tela-acesso").hidden = true;
   $("#app").hidden = false; $("#nav").hidden = false; NO_APP = true;
   aplicarTema(CONTA.perfil.nome);
@@ -210,7 +212,7 @@ async function renderAjustes() {
       <button class="btn-sec vidro" id="aj-trocar">Trocar senha</button>
       <button class="btn-sec vidro" id="aj-sair" style="color:var(--hot)">Sair deste aparelho</button></div>
     <div class="painel vidro"><h4>Meu Top 15</h4><p class="texto-ajuda" style="margin-top:0">${esc(textoPerfil())}</p><button class="btn-sec vidro" id="aj-pref">Ajustar estados e tipos</button></div>
-    <div class="painel vidro"><h4>Minha IA</h4><p class="texto-ajuda" style="margin-top:0">${ia ? `Usando <b>${esc(ia.nome)}</b> com a sua chave (…${esc(ia.final)}), guardada só neste aparelho.` : "Nenhuma chave neste aparelho. A perícia usa a sua própria chave de IA (Claude ou Gemini)."}</p><button class="btn-sec vidro" id="aj-ia">${ia ? "Trocar ou apagar a chave" : "Conectar minha IA"}</button></div>
+    <div class="painel vidro"><h4>Minha IA</h4><p class="texto-ajuda" style="margin-top:0">${ia ? `Usando <b>${esc(ia.nome)}</b> com a sua chave (…${esc(ia.final)}), guardada na sua conta e protegida com a sua senha.` : "Nenhuma chave neste aparelho. A perícia usa a sua própria chave de IA (Claude ou Gemini)."}</p><button class="btn-sec vidro" id="aj-ia">${ia ? "Trocar ou apagar a chave" : "Conectar minha IA"}</button></div>
     <div class="painel vidro"><h4>Aparência</h4>
       <div class="chips wrap" id="aj-temas">${[["auto", "Automático (dia/noite)"], ["claro", "Claro"], ["escuro", "Escuro"]].map(([v, t]) => `<button class="chip ${TEMA === v ? "on" : "vidro"}" data-tema="${v}">${t}</button>`).join("")}</div></div>
     <div class="painel vidro"><h4>Atualização automática</h4>${statusSites(est)}
@@ -226,7 +228,7 @@ async function renderAjustes() {
     const s1 = $("#aj-senha").value, s2 = $("#aj-senha2").value; $("#aj-erro").textContent = "";
     const ruim = senhaRuim(s1, p.email); if (ruim) { $("#aj-erro").textContent = ruim; return; }
     if (s1 !== s2) { $("#aj-erro").textContent = "As duas senhas não são iguais."; return; }
-    try { await SB.trocarSenha(s1); $("#aj-senha").value = ""; $("#aj-senha2").value = ""; toast("Senha trocada"); }
+    try { await SB.trocarSenha(s1); await IA.aposTrocarSenha(s1).catch(() => {}); $("#aj-senha").value = ""; $("#aj-senha2").value = ""; toast("Senha trocada"); }
     catch (e) { $("#aj-erro").textContent = /different|same/i.test(e.message) ? "A senha nova precisa ser diferente da atual." : mensagemAuth(e); }
   });
   $("#aj-sair").addEventListener("click", sairDoApp);
@@ -236,7 +238,7 @@ async function renderAjustes() {
   if (CONTA.admin) Admin.montar($("#aj-admin"));
 }
 async function sairDoApp() {
-  if (!confirm("Sair deste aparelho? A chave de IA e as perícias guardadas aqui também serão apagadas.")) return;
+  if (!confirm("Sair deste aparelho? As perícias guardadas aqui serão apagadas. Sua chave de IA continua guardada na sua conta.")) return;
   const uid = CONTA.uid;
   await IA.apagarTudo();
   LS.del("pericias_" + uid);

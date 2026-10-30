@@ -63,6 +63,20 @@ create table if not exists public.calculos (
   primary key (user_id, lote_id)
 );
 
+-- chave de IA de cada pessoa, CIFRADA no aparelho com uma chave tirada da senha dela.
+-- O banco (e o administrador) só guarda texto embaralhado: sem a senha da pessoa, não abre.
+create table if not exists public.chaves_ia (
+  user_id         uuid primary key default auth.uid() references auth.users(id) on delete cascade,
+  sal             text not null check (char_length(sal) between 16 and 64),
+  prov            text check (prov in ('claude', 'gemini')),
+  modelo_analise  text check (char_length(modelo_analise) <= 80),
+  modelo_leitura  text check (char_length(modelo_leitura) <= 80),
+  final           text check (char_length(final) <= 8),
+  iv              text check (char_length(iv) <= 40),
+  cifra           text check (char_length(cifra) <= 2000),
+  atualizado_em   timestamptz not null default now()
+);
+
 -- ---------------------------------------------------------------------
 -- Funções de apoio (quem é membro, quem é administrador)
 -- ---------------------------------------------------------------------
@@ -345,8 +359,10 @@ alter table public.convites     enable row level security;
 alter table public.favoritos    enable row level security;
 alter table public.preferencias enable row level security;
 alter table public.calculos     enable row level security;
+alter table public.chaves_ia    enable row level security;
 
-revoke all on public.perfis, public.convites, public.favoritos, public.preferencias, public.calculos from anon, authenticated;
+revoke all on public.perfis, public.convites, public.favoritos, public.preferencias, public.calculos, public.chaves_ia from anon, authenticated;
+grant select, insert, update, delete on public.chaves_ia to authenticated;
 grant select on public.perfis to authenticated;
 grant select, insert, delete on public.favoritos to authenticated;
 grant select, insert, update on public.preferencias to authenticated;
@@ -370,6 +386,11 @@ create policy "preferências da própria pessoa" on public.preferencias
 
 drop policy if exists "cálculos da própria pessoa" on public.calculos;
 create policy "cálculos da própria pessoa" on public.calculos
+  for all to authenticated
+  using (user_id = auth.uid() and public.e_membro())
+  with check (user_id = auth.uid() and public.e_membro());
+drop policy if exists "chave de IA da própria pessoa" on public.chaves_ia;
+create policy "chave de IA da própria pessoa" on public.chaves_ia
   for all to authenticated
   using (user_id = auth.uid() and public.e_membro())
   with check (user_id = auth.uid() and public.e_membro());

@@ -183,9 +183,14 @@ PASSO 8 · O QUE PASSAR PARA QUEM FOR USAR A PERÍCIA
   A assinatura Claude Pro/Max NÃO serve como chave de API.
 - Gemini (tem plano grátis): aistudio.google.com > "Get API key" >
   "Create API key" (começa com AIza) e colar no site.
-- A chave fica só no aparelho. No celular e no PC, cola uma vez em cada.
-- Ao "Sair deste aparelho", a chave e as perícias guardadas ali
-  são apagadas.
+- A chave fica guardada na conta da pessoa, CIFRADA com a senha dela
+  do LeilãoTrack: nem o banco nem o administrador conseguem ler.
+  Cola uma vez e vale no celular e no PC (é só entrar com a senha).
+- Se a pessoa trocar a senha em Ajustes, a chave continua valendo.
+  Se a senha for refeita por código ("Esqueci a senha"), é preciso
+  colar a chave de novo.
+- Ao "Sair deste aparelho", as perícias guardadas ali são apagadas;
+  a chave continua na conta.
 
 
 ---------------------------------------------------------------------
@@ -224,8 +229,10 @@ SEGURANÇA: O QUE FOI FEITO
   vira código. O relatório da IA passa por um filtro (DOMPurify) que
   tira imagens, scripts e links perigosos (proteção contra documentos
   "envenenados" que tentam enganar a IA).
-- Chave de IA: cifrada no aparelho com uma chave que o navegador não
-  deixa exportar; vai direto para a Anthropic/Google.
+- Chave de IA: guardada na conta cifrada com a senha da própria pessoa
+  (PBKDF2 + AES-GCM), então o banco só vê texto embaralhado; no
+  aparelho, cifrada com uma chave que o navegador não deixa exportar;
+  vai direto para a Anthropic/Google.
 - CPF, CNPJ, telefones e e-mails dos documentos são ocultados antes
   de ir para a IA.
 - O site não pode ser aberto dentro de outra página (anti-clickjacking)
