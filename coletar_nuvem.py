@@ -79,8 +79,7 @@ SB_PASTA = "privado"
 
 def _sb_headers(extra=None):
     h = {"apikey": SB_KEY, "User-Agent": "LeilaoTrack"}
-    if SB_KEY.startswith("eyJ"):  # chave antiga (JWT); a nova (sb_secret_...) vai só no apikey
-        h["Authorization"] = "Bearer " + SB_KEY
+    h["Authorization"] = "Bearer " + SB_KEY  # chave antiga (JWT) ou nova (sb_secret_), igual ao apikey
     h.update(extra or {})
     return h
 
@@ -91,6 +90,19 @@ def sb_baixar(nome):
         return r.read()
 
 
+def _sb_tipo_chave():
+    if SB_KEY.startswith("sb_secret_"): return "secreta nova (sb_secret_)"
+    if SB_KEY.startswith("sb_publishable_"): return "PÚBLICA (sb_publishable_) — está errada, precisa ser a secreta"
+    if SB_KEY.startswith("eyJ"):
+        try:
+            meio = SB_KEY.split(".")[1]
+            papel = json.loads(base64.urlsafe_b64decode(meio + "=" * (-len(meio) % 4))).get("role", "?")
+        except Exception:
+            papel = "?"
+        return f"antiga (JWT, papel {papel})" + ("" if papel == "service_role" else " — está errada, precisa ser a service_role")
+    return "formato desconhecido"
+
+
 def _sb_erro(e):
     """Texto do erro do Supabase (sem chaves), também como aviso visível no GitHub."""
     corpo = ""
@@ -99,7 +111,7 @@ def _sb_erro(e):
     except Exception:
         pass
     msg = f"{e} {corpo}".replace(SB_KEY, "***") if SB_KEY else f"{e} {corpo}"
-    print(f"::error title=Supabase::{msg}", flush=True)
+    print(f"::error title=Supabase::{msg} | chave usada: {_sb_tipo_chave()}", flush=True)
     return msg
 
 
