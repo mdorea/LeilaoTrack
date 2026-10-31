@@ -185,7 +185,7 @@ function render() {
   const podeOrganizar = fav && S.ordem === "minha" && S.modo !== "mapa" && S.lista.length > 1;
   if (!podeOrganizar) S.organizando = false;
   $("#organizar").hidden = !podeOrganizar;
-  $("#organizar-txt").textContent = S.organizando ? "Use as setas para mudar a ordem. Ela fica salva na sua conta." : "Seus favoritos na ordem que você escolher.";
+  $("#organizar-txt").textContent = S.organizando ? "Segure ≡ e arraste para mudar a ordem. Ela fica salva na sua conta." : "Seus favoritos na ordem que você escolher.";
   $("#btn-organizar").textContent = S.organizando ? "Pronto" : "Organizar";
   $("#grade").classList.toggle("organizando", S.organizando);
   $("#titulo-lista").textContent = fav ? "Favoritos" : top ? "Seu Top 15" : f.novos ? "Novidades" : f.fecham ? "Fecham em 48h" : "Lotes";
@@ -218,21 +218,59 @@ function card(l) {
       <div class="baixo"><span class="preco">${fmtBRL(l.valor)}</span><span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
     </div>
     ${desc > 0 ? `<span class="desc">-${desc}%</span>` : ""}
-    ${S.organizando && S.aba === "favoritos" ? `<span class="mover"><span role="button" data-mover="-1" data-id="${esc(l.id)}" aria-label="Subir">${SETA_CIMA}</span><span role="button" data-mover="1" data-id="${esc(l.id)}" aria-label="Descer">${SETA_BAIXO}</span></span>`
+    ${S.organizando && S.aba === "favoritos" ? `<span class="alca-arrastar" data-arrastar="${esc(l.id)}" role="button" aria-label="Segure e arraste para mudar a ordem" title="Arraste para mudar a ordem">${ALCA}</span>`
       : `<span class="coracao ${l.fav ? "on" : ""}" data-fav="${esc(l.id)}" role="button" aria-label="Favoritar">${coracao(l.fav)}</span>`}
   </button>`;
 }
-const SETA_CIMA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>';
-const SETA_BAIXO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
-function moverFav(id, passo) {
-  const ids = S.lista.map(l => l.id), i = ids.indexOf(id), j = i + passo;
-  if (i < 0 || j < 0 || j >= ids.length) return;
-  [ids[i], ids[j]] = [ids[j], ids[i]];
-  CONTA.salvarOrdemFavs(ids);
-  const y = scrollY; render(); window.scrollTo(0, y);
-  const c = document.querySelector(`#grade .card[data-id="${CSS.escape(id)}"]`); if (c) { c.classList.add("movido"); setTimeout(() => c.classList.remove("movido"), 500); }
+const ALCA = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+/* arrastar pela alça (≡) para reordenar os favoritos: funciona com dedo e com mouse */
+let _arr = null;
+function iniciarArrasto(e, alca) {
+  const cardEl = alca.closest(".card"); if (!cardEl) return;
+  e.preventDefault();
+  const r = cardEl.getBoundingClientRect();
+  const lugar = document.createElement("div"); lugar.className = "card-lugar"; lugar.style.height = r.height + "px";
+  cardEl.parentNode.insertBefore(lugar, cardEl);
+  Object.assign(cardEl.style, {position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", zIndex: 60, pointerEvents: "none", margin: 0});
+  cardEl.classList.add("arrastando");
+  _arr = {cardEl, lugar, dx: e.clientX - r.left, dy: e.clientY - r.top, x: e.clientX, y: e.clientY, id: e.pointerId};
+  try { alca.setPointerCapture(e.pointerId); } catch (_) {}
+  requestAnimationFrame(rolarAoArrastar);
 }
-$("#btn-organizar").addEventListener("click", () => { S.organizando = !S.organizando; render(); });
+function moverArrasto(x, y) {
+  if (!_arr) return;
+  _arr.x = x; _arr.y = y;
+  _arr.cardEl.style.left = (x - _arr.dx) + "px"; _arr.cardEl.style.top = (y - _arr.dy) + "px";
+  const el = document.elementFromPoint(x, y);
+  const alvo = el && el.closest("#grade .card, #grade .card-lugar");
+  if (!alvo || alvo === _arr.lugar || alvo === _arr.cardEl) return;
+  const itens = [...$("#grade").children].filter(n => n.matches(".card,.card-lugar") && n !== _arr.cardEl);
+  const iLugar = itens.indexOf(_arr.lugar), iAlvo = itens.indexOf(alvo);
+  alvo.parentNode.insertBefore(_arr.lugar, iLugar < iAlvo ? alvo.nextSibling : alvo);
+}
+function rolarAoArrastar() {
+  if (!_arr) return;
+  const borda = 90, h = innerHeight;
+  const v = _arr.y < borda ? -Math.ceil((borda - _arr.y) / 6) : _arr.y > h - borda - 70 ? Math.ceil((_arr.y - (h - borda - 70)) / 6) : 0;
+  if (v) { window.scrollBy(0, v); moverArrasto(_arr.x, _arr.y); }
+  requestAnimationFrame(rolarAoArrastar);
+}
+function soltarArrasto() {
+  if (!_arr) return;
+  const {cardEl, lugar} = _arr; _arr = null;
+  lugar.parentNode.insertBefore(cardEl, lugar); lugar.remove();
+  cardEl.removeAttribute("style"); cardEl.classList.remove("arrastando");
+  cardEl.classList.add("movido"); setTimeout(() => cardEl.classList.remove("movido"), 500);
+  const ids = [...$("#grade").querySelectorAll(".card")].map(c => c.dataset.id);
+  const porId = new Map(S.lista.map(l => [l.id, l]));
+  S.lista = ids.map(id => porId.get(id)).filter(Boolean).concat(S.lista.filter(l => !ids.includes(l.id)));
+  CONTA.salvarOrdemFavs(S.lista.map(l => l.id));
+}
+$("#grade").addEventListener("pointerdown", e => { const a = e.target.closest("[data-arrastar]"); if (a && S.organizando) iniciarArrasto(e, a); });
+document.addEventListener("pointermove", e => { if (_arr && e.pointerId === _arr.id) { e.preventDefault(); moverArrasto(e.clientX, e.clientY); } }, {passive: false});
+document.addEventListener("pointerup", e => { if (_arr && e.pointerId === _arr.id) soltarArrasto(); });
+document.addEventListener("pointercancel", e => { if (_arr && e.pointerId === _arr.id) soltarArrasto(); });
+$("#btn-organizar").addEventListener("click", () => { S.organizando = !S.organizando; render(); if (S.organizando) while (S.mostrados < S.lista.length) maisCards(); });
 function maisCards() {
   const prox = S.lista.slice(S.mostrados, S.mostrados + 40); if (!prox.length) return;
   $("#grade").insertAdjacentHTML("beforeend", prox.map(card).join("")); S.mostrados += prox.length;
@@ -260,8 +298,6 @@ $("#chips").addEventListener("click", e => {
   salvarFiltro(); render();
 });
 $("#grade").addEventListener("click", async e => {
-  const mv = e.target.closest("[data-mover]");
-  if (mv) { e.stopPropagation(); moverFav(mv.dataset.id, +mv.dataset.mover); return; }
   if (S.organizando) return;
   const fav = e.target.closest("[data-fav]");
   if (fav) { e.stopPropagation(); const on = await alternarFav(fav.dataset.fav); fav.classList.toggle("on", on); fav.innerHTML = coracao(on); return; }

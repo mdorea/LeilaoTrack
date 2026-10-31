@@ -435,10 +435,12 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .organizar[hidden]{display:none}
 .organizar button{height:32px;padding:0 14px;border-radius:16px;font-size:12px;font-weight:700;color:var(--chip-on-tx);background:var(--chip-on-bg);flex:none}
 .grade.organizando .card{cursor:default}
-.mover{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:6px;z-index:2}
-.mover span{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--glass2);border:1px solid var(--line);color:var(--tx);cursor:pointer}
-.mover span:active{transform:scale(.92)}
+.alca-arrastar{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:44px;height:56px;border-radius:14px;display:grid;place-items:center;color:var(--mu);cursor:grab;touch-action:none;z-index:2}
+.alca-arrastar:active{cursor:grabbing;color:var(--tx);background:var(--glass2)}
 .grade.organizando .desc{right:56px}
+.card.arrastando{background:var(--sheet);box-shadow:0 18px 40px rgba(0,0,0,.35);transform:scale(1.02);opacity:.97;transition:transform .12s}
+.card-lugar{border:2px dashed var(--line);border-radius:var(--r-card);background:var(--glass)}
+.grade.organizando{user-select:none;-webkit-user-select:none}
 .card.movido{outline:2px solid var(--acc);outline-offset:2px;transition:outline .3s}
 .grade.organizando .card .info{padding-right:46px}
 .mapa{background:#EDEAF4}
