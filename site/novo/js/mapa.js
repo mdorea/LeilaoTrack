@@ -1,10 +1,12 @@
 /* LeilãoTrack · mapa dos lotes (agrupados por cidade) */
 "use strict";
 const Mapa = (() => {
-  // mapa público do OpenStreetMap (sem chave); no tema escuro as cores são invertidas por CSS
+  // mapa público do OpenStreetMap (sem chave), sempre claro para ficar legível
   const TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
   const CREDITO = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>';
   const BRASIL = [[-33.8, -74], [5.3, -34.7]];
+  const LIMITE = [[-35.5, -75.5], [7, -32.5]]; // só dá para navegar pelo Brasil
+  let contorno = null;
   let mapa = null, camada = null, fundo = null, temaFundo = "", coords = null, grupos = [], semCidade = 0, pronto = null, ultimaLista = null;
 
   const semAc = s => String(s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -15,24 +17,30 @@ const Mapa = (() => {
       if (!document.querySelector('link[href^="vendor/leaflet/leaflet.css"]')) {
         const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "vendor/leaflet/leaflet.css"; document.head.appendChild(css);
       }
-      const [, dados] = await Promise.all([carregarScript("vendor/leaflet/leaflet.js"), fetch("vendor/municipios.json").then(r => { if (!r.ok) throw new Error("municípios"); return r.json(); })]);
-      coords = dados;
+      const [, dados, borda] = await Promise.all([carregarScript("vendor/leaflet/leaflet.js"),
+        fetch("vendor/municipios.json").then(r => { if (!r.ok) throw new Error("municípios"); return r.json(); }),
+        fetch("vendor/brasil.json").then(r => r.ok ? r.json() : null).catch(() => null)]);
+      coords = dados; contorno = Array.isArray(borda) ? borda : null;
     })().catch(e => { pronto = null; throw e; });
     return pronto;
   }
 
   function criarMapa() {
-    mapa = L.map("mapa", {zoomControl: false, minZoom: 3, maxZoom: 15, worldCopyJump: false, maxBounds: [[-45, -95], [15, -20]], maxBoundsViscosity: .8});
+    mapa = L.map("mapa", {zoomControl: false, minZoom: 3, maxZoom: 15, worldCopyJump: false, maxBounds: LIMITE, maxBoundsViscosity: 1});
     mapa.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener noreferrer">Leaflet</a>');
     L.control.zoom({position: "topright", zoomInTitle: "Aproximar", zoomOutTitle: "Afastar"}).addTo(mapa);
     mapa.attributionControl.setPosition("bottomright");
     mapa.fitBounds(BRASIL, {padding: [10, 10]});
+    mapa.setMinZoom(Math.max(3, mapa.getBoundsZoom(LIMITE, true)));  // não afasta além do Brasil
+    // fora do Brasil fica apagado (máscara com o contorno do país)
+    if (contorno) L.polygon([[[-90, -180], [-90, 180], [90, 180], [90, -180]], contorno],
+      {stroke: false, fillColor: "#EDEAF4", fillOpacity: .78, interactive: false}).addTo(mapa);
+    if (contorno) L.polygon(contorno, {color: "#8B6FE8", weight: 1.5, opacity: .7, fill: false, interactive: false}).addTo(mapa);
     camada = L.layerGroup().addTo(mapa);
     mapa.on("zoomend moveend", desenhar);
   }
   function trocarFundo() {
     const t = tema();
-    $("#mapa").classList.toggle("mapa-escuro", t === "escuro");
     if (!fundo) fundo = L.tileLayer(TILE, {attribution: CREDITO, maxZoom: 19, referrerPolicy: "strict-origin-when-cross-origin"}).addTo(mapa);
     temaFundo = t;
   }
