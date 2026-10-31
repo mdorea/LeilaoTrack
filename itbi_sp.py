@@ -122,8 +122,9 @@ def ler_planilha(caminho, meses=18, hoje=None):
                 d = row[I["data"]]
                 if isinstance(d, datetime) and d.year * 12 + d.month < corte:
                     continue
+                ym = f"{d.year}-{d.month:02d}" if isinstance(d, datetime) else ""
                 vendas.append((tipo, chave_rua(row[I["rua"]]), chave_bairro(row[I["bairro"]]),
-                               str(row[I["cep"]] or "").zfill(8)[:5], m2))
+                               str(row[I["cep"]] or "").zfill(8)[:5], m2, ym))
             except (IndexError, TypeError):
                 continue
     return vendas
@@ -136,16 +137,16 @@ def _q(ordem, p):
 
 
 def resumir(vendas, min_rua=5, min_bairro=12):
-    """{'r': {tipo|rua: [n, p25, mediana, p75]}, 'b': {tipo|bairro: [...]}, 'c': {tipo|cep5: [...]}}"""
+    """{'r': {tipo|rua: [n, p25, mediana, p75]}, 'b': {tipo|bairro: [...]}, 'periodo': [aaaa-mm, aaaa-mm], 'vendas': n}"""
     grupos = {"r": {}, "b": {}, "c": {}}
     # bairro em branco em parte das guias: usa o bairro mais comum do mesmo CEP (5 dígitos)
     cep_bairro = {}
-    for t, r, b, c, m in vendas:
+    for t, r, b, c, m, _ in vendas:
         if b:
             cep_bairro.setdefault(c, {}).setdefault(b, 0)
             cep_bairro[c][b] += 1
     cep_bairro = {c: max(d, key=d.get) for c, d in cep_bairro.items()}
-    for t, r, b, c, m in vendas:
+    for t, r, b, c, m, _ in vendas:
         b = b or cep_bairro.get(c, "")
         if r:
             grupos["r"].setdefault(t + "|" + r, []).append(m)
@@ -153,14 +154,21 @@ def resumir(vendas, min_rua=5, min_bairro=12):
             grupos["b"].setdefault(t + "|" + b, []).append(m)
         grupos["c"].setdefault(t + "|" + c, []).append(m)
     res = {}
-    for k, mins in (("r", min_rua), ("b", min_bairro), ("c", min_bairro)):
+    for k, mins in (("r", min_rua), ("b", min_bairro)):
         res[k] = {}
         for g, vals in grupos[k].items():
             if len(vals) < mins:
                 continue
             o = sorted(vals)
             res[k][g] = [len(o), round(_q(o, .25)), round(_q(o, .5)), round(_q(o, .75))]
+    meses = sorted(v[5] for v in vendas if v[5])
+    res["periodo"] = [meses[0], meses[-1]] if meses else []
+    res["vendas"] = len(vendas)
     return res
+
+
+def _titulo(s):
+    return re.sub(r"\s+\d.*$", "", str(s or "")).strip()[:60]
 
 
 def para_lote(l, resumo):
@@ -173,9 +181,9 @@ def para_lote(l, resumo):
     r = chave_rua(l.get("endereco"))
     if r and len(r) >= 4 and (t + "|" + r) in resumo.get("r", {}):
         n, p25, med, p75 = resumo["r"][t + "|" + r]
-        return {"nivel": "rua", "n": n, "p25": p25, "m2": med, "p75": p75}
+        return {"nivel": "rua", "local": _titulo(l.get("endereco", "").split(",")[0]), "n": n, "p25": p25, "m2": med, "p75": p75}
     b = chave_bairro(l.get("bairro"))
     if b and (t + "|" + b) in resumo.get("b", {}):
         n, p25, med, p75 = resumo["b"][t + "|" + b]
-        return {"nivel": "bairro", "n": n, "p25": p25, "m2": med, "p75": p75}
+        return {"nivel": "bairro", "local": l.get("bairro", ""), "n": n, "p25": p25, "m2": med, "p75": p75}
     return None
