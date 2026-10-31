@@ -1,6 +1,7 @@
 /* LeilãoTrack · valor de mercado estimado (faixa), a partir dos próprios lotes.
    Referência de cada lote = valor da 1ª praça (perto da avaliação) dividido pela área.
    Compara com casas/apartamentos parecidos no mesmo bairro ou, se faltar, na mesma cidade.
+   Calibrado em 31/10/2026 com 1.683 lotes ativos.
    O próprio lote nunca entra na conta dele. É uma referência, não um laudo. */
 "use strict";
 const Estimativa = (() => {
@@ -50,27 +51,35 @@ const Estimativa = (() => {
       if (!serve(l)) continue;
       const tira = arr => (arr || []).filter(x => x.id !== l.id).map(x => x.m);
       const vb = tira(bairro.get(kb(l))), vc = tira(cidade.get(kc(l)));
+      // confiança calibrada no teste com os lotes reais (cada lote estimado sem ele mesmo):
+      // mesmo bairro (3+ parecidos): acertou dentro de ±20% em ~6 de 10 casos → "média"
+      // só a cidade (5+ parecidos): ~1 em 3 casos → "baixa". Não há "alta" com esses dados.
       let vals, nivel, conf;
-      if (vb.length >= 5) { vals = vb; nivel = "bairro"; conf = "alta"; }
-      else if (vb.length >= 3) { vals = vb; nivel = "bairro"; conf = "média"; }
-      else if (vc.length >= 8) { vals = vc; nivel = "cidade"; conf = "média"; }
+      if (vb.length >= 3) { vals = vb; nivel = "bairro"; conf = "média"; }
       else if (vc.length >= 5) { vals = vc; nivel = "cidade"; conf = "baixa"; }
       else continue;
       const ok = limpar(vals);
       if (ok.length < 3) continue;
-      const med = quantil(ok, .5), folga = conf === "alta" ? .10 : conf === "média" ? .14 : .22;
-      const lo = Math.min(quantil(ok, .25), med * (1 - folga)), hi = Math.max(quantil(ok, .75), med * (1 + folga));
-      const min = arred(lo * l.area), max = arred(hi * l.area), meio = arred(med * l.area);
+      const med = quantil(ok, .5);
+      // largura = metade central dos erros medidos (a avaliação real ficou dentro em ~50% dos casos)
+      const [fLo, fHi] = conf === "média" ? [.85, 1.18] : [.70, 1.45];
+      const min = arred(med * fLo * l.area), max = arred(med * fHi * l.area), meio = arred(med * l.area);
       if (!(min > 0) || !(max > min)) continue;
+      // se a avaliação do próprio lote foge muito dos parecidos, a área ou o anúncio
+      // provavelmente está errado (terreno x construída, parte ideal...): não estima
+      const ref = Number(l.referencia) || 0;
+      if (ref > 0 && (ref / meio < .4 || ref / meio > 2.5)) { l._est = {fora: true}; continue; }
+      if (l.valor > 0 && l.valor / meio < .2) { l._est = {fora: true}; continue; }
       const desc = l.valor > 0 ? Math.round((1 - l.valor / meio) * 100) : null;
-      l._est = {min, max, meio, m2: Math.round(med), conf, nivel, n: ok.length, desc};
+      l._est = {min, max, meio, m2: Math.round(med), conf, nivel, n: ok.length, desc,
+        local: nivel === "bairro" ? l.bairro : l.cidade};
       n++;
     }
     return n;
   }
 
-  const curto = v => v >= 1e6 ? "R$ " + (v / 1e6).toLocaleString("pt-BR", {maximumFractionDigits: 2}) + " mi"
-    : "R$ " + Math.round(v / 1e3).toLocaleString("pt-BR") + " mil";
+  const curto = v => v >= 1e6 ? "R$\u00a0" + (v / 1e6).toLocaleString("pt-BR", {maximumFractionDigits: 2}) + "\u00a0mi"
+    : "R$\u00a0" + Math.round(v / 1e3).toLocaleString("pt-BR") + "\u00a0mil";
 
   return {calcular, curto, _serve: serve};
 })();
