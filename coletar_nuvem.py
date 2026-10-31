@@ -430,6 +430,9 @@ def main():
                     textos.append(("data", f"Data alterada para {l['encerra'].replace('T', ' ')}"))
                 for tipo, t in textos:
                     eventos.insert(0, {"id": l["id"], "quando": AGORA_S, "tipo": tipo, "texto": t})
+                for k in ("geo", "geo_q", "geo_tent"):
+                    if velho.get(k) and not l.get(k):
+                        l[k] = velho[k]
                 l["visto"] = velho.get("visto", AGORA_S)
                 l["primeira_leitura"] = velho.get("primeira_leitura", False)
                 l["ativo"] = True
@@ -470,6 +473,12 @@ def main():
     for l in lotes.values():
         coletores.finalizar(l)
 
+    try:
+        import geo
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "site", "novo", "vendor", "municipios.json"), encoding="utf-8") as f:
+            geo.atualizar(lotes, json.load(f), log)
+    except Exception as e:
+        log(f"Mapa: não localizei lotes desta vez ({e})")
     historico = atualizar_historico(lotes)
     itbi_info = atualizar_itbi(lotes)
 

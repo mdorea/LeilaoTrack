@@ -7,7 +7,7 @@ const Mapa = (() => {
   const BRASIL = [[-33.8, -74], [5.3, -34.7]];
   const LIMITE = [[-35.5, -75.5], [7, -32.5]]; // só dá para navegar pelo Brasil
   let contorno = null;
-  let mapa = null, camada = null, fundo = null, temaFundo = "", coords = null, grupos = [], semCidade = 0, pronto = null, ultimaLista = null;
+  let mapa = null, camada = null, fundo = null, temaFundo = "", coords = null, grupos = [], semCidade = 0, exatos = 0, pronto = null, ultimaLista = null;
 
   const semAc = s => String(s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const tema = () => document.documentElement.dataset.tema === "claro" ? "claro" : "escuro";
@@ -26,7 +26,7 @@ const Mapa = (() => {
   }
 
   function criarMapa() {
-    mapa = L.map("mapa", {zoomControl: false, minZoom: 3, maxZoom: 15, worldCopyJump: false, maxBounds: LIMITE, maxBoundsViscosity: 1});
+    mapa = L.map("mapa", {zoomControl: false, minZoom: 3, maxZoom: 18, worldCopyJump: false, maxBounds: LIMITE, maxBoundsViscosity: 1});
     mapa.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener noreferrer">Leaflet</a>');
     L.control.zoom({position: "topright", zoomInTitle: "Aproximar", zoomOutTitle: "Afastar"}).addTo(mapa);
     mapa.attributionControl.setPosition("bottomright");
@@ -45,73 +45,60 @@ const Mapa = (() => {
     temaFundo = t;
   }
 
-  // junta os lotes por cidade, usando o centro de cada município (tabela do IBGE)
-  function agruparPorCidade(lista) {
-    const m = new Map(); semCidade = 0;
+  // um ponto por lote: localização do endereço (quando já foi localizada) ou o centro da cidade (IBGE)
+  function pontosDe(lista) {
+    const pts = []; semCidade = 0; exatos = 0;
     for (const l of lista) {
+      if (Array.isArray(l.geo) && isFinite(l.geo[0]) && isFinite(l.geo[1])) {
+        pts.push({l, lat: l.geo[0], lng: l.geo[1], cid: l.cidade + "|" + l.uf}); if (l.geo[2] === "rua") exatos++; continue;
+      }
       const c = l.cidade && l.uf ? coords[semAc(l.cidade) + "|" + l.uf] : null;
       if (!c) { semCidade++; continue; }
-      const k = l.cidade + "|" + l.uf;
-      if (!m.has(k)) m.set(k, {cidade: l.cidade, uf: l.uf, lat: c[0], lng: c[1], lotes: []});
-      m.get(k).lotes.push(l);
+      pts.push({l, lat: c[0], lng: c[1], cid: l.cidade + "|" + l.uf});
     }
-    return [...m.values()];
+    return pts;
   }
 
   const raio = n => 14 + Math.min(14, 3.4 * Math.log2(1 + n));
+  const CELULA = 46;  // px: pontos mais perto que isso viram uma bolha só
   function desenhar() {
     if (!mapa || !camada) return;
     camada.clearLayers();
-    const area = mapa.getBounds().pad(.25);
-    let bolhas = grupos.filter(g => area.contains([g.lat, g.lng])).map(g => {
-      const p = mapa.latLngToLayerPoint([g.lat, g.lng]);
-      return {x: p.x, y: p.y, n: g.lotes.length, cidades: [g]};
-    }).sort((a, b) => b.n - a.n);
-    // junta bolhas que se encostariam na tela (a maior absorve a menor)
-    let mudou = true;
-    while (mudou) {
-      mudou = false;
-      for (let i = 0; i < bolhas.length && !mudou; i++) for (let j = i + 1; j < bolhas.length; j++) {
-        const a = bolhas[i], b = bolhas[j];
-        if (Math.hypot(a.x - b.x, a.y - b.y) < raio(a.n) + raio(b.n) + 2) {
-          a.n += b.n; a.cidades = a.cidades.concat(b.cidades); bolhas.splice(j, 1); mudou = true; break;
-        }
-      }
-      if (mudou) bolhas.sort((a, b) => b.n - a.n);
+    const area = mapa.getBounds().pad(.15);
+    const grade = new Map();
+    for (const p of grupos) {
+      if (!area.contains([p.lat, p.lng])) continue;
+      const q = mapa.latLngToLayerPoint([p.lat, p.lng]);
+      const k = Math.floor(q.x / CELULA) + "," + Math.floor(q.y / CELULA);
+      let b = grade.get(k); if (!b) grade.set(k, b = {pts: []});
+      b.pts.push(p);
     }
-    for (const b of bolhas) {
-      const r = raio(b.n), nivel = b.n >= 100 ? "muitos" : b.n >= 20 ? "varios" : "poucos";
-      const principal = b.cidades[0];
-      const rotulo = b.n >= 1000 ? (b.n / 1000).toFixed(1).replace(".", ",") + "k" : String(b.n);
-      const nome = mapa.getZoom() >= 7 ? `<span class="bolha-nome">${esc(principal.cidade)}${b.cidades.length > 1 ? " +" + (b.cidades.length - 1) : ""}</span>` : "";
+    for (const b of grade.values()) {
+      const n = b.pts.length;
+      const lat = b.pts.reduce((s, p) => s + p.lat, 0) / n, lng = b.pts.reduce((s, p) => s + p.lng, 0) / n;
+      const r = raio(n), nivel = n >= 100 ? "muitos" : n >= 20 ? "varios" : "poucos";
+      const porCidade = new Map(); for (const p of b.pts) porCidade.set(p.cid, (porCidade.get(p.cid) || 0) + 1);
+      const topo = [...porCidade.entries()].sort((x, y) => y[1] - x[1]);
+      const nomeCid = topo[0][0].split("|")[0];
+      const rotulo = n >= 1000 ? (n / 1000).toFixed(1).replace(".", ",") + "k" : String(n);
+      const nome = mapa.getZoom() >= 8 ? `<span class="bolha-nome">${esc(nomeCid)}${topo.length > 1 ? " +" + (topo.length - 1) : ""}</span>` : "";
       const ic = L.divIcon({className: "bolha-ic", iconSize: [r * 2, r * 2], iconAnchor: [r, r],
         html: `<span class="bolha ${nivel}" style="width:${r * 2}px;height:${r * 2}px">${rotulo}</span>${nome}`});
-      const lat = b.cidades.reduce((s, c) => s + c.lat * c.lotes.length, 0) / b.n, lng = b.cidades.reduce((s, c) => s + c.lng * c.lotes.length, 0) / b.n;
-      const mk = L.marker(b.cidades.length === 1 ? [principal.lat, principal.lng] : [lat, lng], {icon: ic, keyboard: true, title: `${b.n} lotes · ${principal.cidade}${b.cidades.length > 1 ? " e região" : ""}`});
-      mk.on("click", () => tocar(b));
+      const mk = L.marker([lat, lng], {icon: ic, keyboard: true, title: `${n} lote${n > 1 ? "s" : ""} · ${nomeCid}${topo.length > 1 ? " e região" : ""}`});
+      mk.on("click", () => abrirLista(b.pts, topo));
       camada.addLayer(mk);
     }
-    const total = grupos.reduce((s, g) => s + g.lotes.length, 0);
-    $("#mapa-nota").innerHTML = `<b>${total.toLocaleString("pt-BR")} lotes</b> no mapa${semCidade ? ` · ${semCidade} sem cidade no anúncio` : ""}`;
+    $("#mapa-nota").innerHTML = `<b>${grupos.length.toLocaleString("pt-BR")} lotes</b> no mapa${exatos ? ` · ${exatos.toLocaleString("pt-BR")} no endereço exato` : ""}${semCidade ? ` · ${semCidade} sem cidade no anúncio` : ""}`;
   }
 
-  function tocar(b) {
-    if (b.cidades.length > 1 && mapa.getZoom() < mapa.getMaxZoom()) {
-      const lims = L.latLngBounds(b.cidades.map(c => [c.lat, c.lng]));
-      const sz = mapa.getSize();
-      if (lims.getNorthEast().distanceTo(lims.getSouthWest()) > 800) { mapa.flyToBounds(lims, {padding: [Math.min(80, sz.x / 5), Math.min(80, sz.y / 5)], maxZoom: 13, duration: .5}); return; }
-    }
-    abrirCidade(b.cidades);
-  }
-
-  function abrirCidade(cidades) {
-    const ids = new Set(cidades.flatMap(c => c.lotes.map(l => l.id)));
-    const lotes = (ultimaLista || []).filter(l => ids.has(l.id));
-    const principal = cidades[0];
-    $("#cidade-tit").textContent = cidades.length > 1 ? `${principal.cidade} e região` : `${principal.cidade}, ${principal.uf}`;
-    const menor = Math.min(...lotes.map(l => l.valor || Infinity));
-    $("#cidade-sub").textContent = `${lotes.length.toLocaleString("pt-BR")} lote${lotes.length > 1 ? "s" : ""}${cidades.length > 1 ? " em " + juntar(cidades.slice(0, 4).map(c => c.cidade)) + (cidades.length > 4 ? " e outras" : "") : ""}${isFinite(menor) ? " · a partir de " + fmtBRL(menor) : ""}`;
-    $("#cidade-lotes").innerHTML = lotes.slice(0, 200).map(card).join("") + (lotes.length > 200 ? `<p class="texto-ajuda">Mostrando 200 de ${lotes.length}. Use os filtros para refinar.</p>` : "");
+  // clicou numa bolha: lista exatamente os lotes dela (sem aproximar o mapa sozinho)
+  function abrirLista(pts, topo) {
+    const lotes = pts.map(p => p.l);
+    const cidades = topo.map(([k]) => k.split("|")[0]);
+    $("#cidade-tit").textContent = topo.length === 1 ? `${cidades[0]}, ${topo[0][0].split("|")[1]}` : `${cidades[0]} e região`;
+    const menor = Math.min(...lotes.map(l => l._preco || l.valor || Infinity));
+    $("#cidade-sub").textContent = `${lotes.length.toLocaleString("pt-BR")} lote${lotes.length > 1 ? "s" : ""}${topo.length > 1 ? " em " + juntar(cidades.slice(0, 4)) + (cidades.length > 4 ? " e outras" : "") : ""}${isFinite(menor) ? " · a partir de " + fmtBRL(menor) : ""}`;
+    $("#cidade-lotes").innerHTML = lotes.slice(0, 200).map(card).join("") + (lotes.length > 200 ? `<p class="texto-ajuda">Mostrando 200 de ${lotes.length}. Aproxime o mapa para separar.</p>` : "");
     $("#folha-cidade .folha-corpo").scrollTop = 0;
     abrir("#folha-cidade");
   }
@@ -130,7 +117,7 @@ const Mapa = (() => {
     if (!mapa) criarMapa();
     trocarFundo();
     mapa.invalidateSize();
-    grupos = agruparPorCidade(lista);
+    grupos = pontosDe(lista);
     desenhar();
   }
 
@@ -141,5 +128,5 @@ const Mapa = (() => {
   });
   window.addEventListener("resize", () => { if (mapa && !$("#mapa-box").hidden) mapa.invalidateSize(); });
 
-  return {mostrar, abrirCidade, _grupos: () => grupos};
+  return {mostrar, _grupos: () => grupos};
 })();
