@@ -3,6 +3,9 @@
 const ORDENS = [
   ["desconto", "Maior desconto", "sobre a 1ª praça"], ["menor", "Menor valor", ""], ["maior", "Maior valor", ""],
   ["encerra", "Encerra primeiro", "próximos leilões no topo"], ["recentes", "Mais recentes", "entrou por último"], ["lances", "Mais lances", "mais disputados"]];
+const ORDEM_MINHA = ["minha", "Minha ordem", "você organiza com as setas"];
+const ordensDaAba = aba => aba === "favoritos" ? [ORDEM_MINHA, ...ORDENS] : ORDENS;
+function ordemSalva(aba) { const v = LS.get(aba === "favoritos" ? "ordem_fav" : "ordem"); return ordensDaAba(aba).some(o => o[0] === v) ? v : (aba === "favoritos" ? "minha" : "desconto"); }
 const FILTRO0 = {sites: [], tipos: [], pracas: [], ocup: [], ufs: [], cidades: [], vmin: 0, vmax: 0, dmin: 0, prazo: "", novos: false, fecham: false, top: true};
 const VMAX = 3000000;
 const CHAVES_LISTA = ["sites", "tipos", "pracas", "ocup", "ufs", "cidades"];
@@ -20,9 +23,13 @@ function filtroSalvo(aba = "inicio") {
 }
 const S = {lotes: [], eventos: [], estado: {}, versao: null, filtros: {inicio: filtroSalvo("inicio"), favoritos: filtroSalvo("favoritos")},
   modo: LS.get("modo") === "mapa" ? "mapa" : "lista",
-  ordem: ORDENS.some(o => o[0] === LS.get("ordem")) ? LS.get("ordem") : "desconto",
+  ordens: {inicio: ordemSalva("inicio"), favoritos: ordemSalva("favoritos")}, organizando: false,
   busca: "", aba: "inicio", lista: [], mostrados: 0, rascunho: null, cidadeBusca: "", top: null};
 
+Object.defineProperty(S, "ordem", {
+  get() { return this.ordens[this.aba === "favoritos" ? "favoritos" : "inicio"]; },
+  set(v) { const a = this.aba === "favoritos" ? "favoritos" : "inicio"; this.ordens[a] = v; LS.set(a === "favoritos" ? "ordem_fav" : "ordem", v); },
+});
 Object.defineProperty(S, "filtro", {
   get() { return this.filtros[this.aba === "favoritos" ? "favoritos" : "inicio"]; },
   set(f) { this.filtros[this.aba === "favoritos" ? "favoritos" : "inicio"] = f; },
@@ -97,7 +104,11 @@ function ordenar(a) {
     menor: (x, y) => (x.valor || 9e12) - (y.valor || 9e12), maior: (x, y) => (y.valor || 0) - (x.valor || 0),
     encerra: (x, y) => x._enc - y._enc, recentes: (x, y) => (y.visto || "").localeCompare(x.visto || "") || x._enc - y._enc,
     lances: (x, y) => (y.lances || 0) - (x.lances || 0)}[S.ordem];
-  return a.sort(by);
+  if (S.ordem === "minha") { // favoritos novos (ainda sem posição) aparecem no topo
+    const pos = new Map(CONTA.prefs.ordem_favs.map((id, i) => [id, i]));
+    return a.sort((x, y) => (pos.has(x.id) ? pos.get(x.id) : -1) - (pos.has(y.id) ? pos.get(y.id) : -1));
+  }
+  return a.sort(by || ((x, y) => (y.desconto || 0) - (x.desconto || 0)));
 }
 function qtdFiltros(f) { return CHAVES_LISTA.reduce((n, k) => n + (f[k].length ? 1 : 0), 0) + (f.vmin || (f.vmax && f.vmax < VMAX) ? 1 : 0) + (f.dmin ? 1 : 0) + (f.prazo ? 1 : 0); }
 function salvarFiltro() { LS.set(CHAVE_FILTRO[S.aba === "favoritos" ? "favoritos" : "inicio"], S.filtro); }
@@ -170,7 +181,13 @@ function render() {
   $("#n-novos").classList.toggle("on", f.novos); $("#n-fecham").classList.toggle("on", f.fecham);
   $(".numeros").hidden = S.aba === "favoritos";
   const n = qtdFiltros(f); const b = $("#badge"); b.hidden = !n; b.textContent = n;
-  $("#ordem-nome").textContent = ORDENS.find(o => o[0] === S.ordem)[1];
+  $("#ordem-nome").textContent = (ordensDaAba(S.aba).find(o => o[0] === S.ordem) || ORDENS[0])[1];
+  const podeOrganizar = fav && S.ordem === "minha" && S.modo !== "mapa" && S.lista.length > 1;
+  if (!podeOrganizar) S.organizando = false;
+  $("#organizar").hidden = !podeOrganizar;
+  $("#organizar-txt").textContent = S.organizando ? "Use as setas para mudar a ordem. Ela fica salva na sua conta." : "Seus favoritos na ordem que você escolher.";
+  $("#btn-organizar").textContent = S.organizando ? "Pronto" : "Organizar";
+  $("#grade").classList.toggle("organizando", S.organizando);
   $("#titulo-lista").textContent = fav ? "Favoritos" : top ? "Seu Top 15" : f.novos ? "Novidades" : f.fecham ? "Fecham em 48h" : "Lotes";
   $("#qtd").textContent = `${S.lista.length.toLocaleString("pt-BR")} lotes`;
   $("#top-pref").hidden = !top; $("#top-pref-txt").textContent = textoPerfil();
@@ -201,9 +218,21 @@ function card(l) {
       <div class="baixo"><span class="preco">${fmtBRL(l.valor)}</span><span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
     </div>
     ${desc > 0 ? `<span class="desc">-${desc}%</span>` : ""}
-    <span class="coracao ${l.fav ? "on" : ""}" data-fav="${esc(l.id)}" role="button" aria-label="Favoritar">${coracao(l.fav)}</span>
+    ${S.organizando && S.aba === "favoritos" ? `<span class="mover"><span role="button" data-mover="-1" data-id="${esc(l.id)}" aria-label="Subir">${SETA_CIMA}</span><span role="button" data-mover="1" data-id="${esc(l.id)}" aria-label="Descer">${SETA_BAIXO}</span></span>`
+      : `<span class="coracao ${l.fav ? "on" : ""}" data-fav="${esc(l.id)}" role="button" aria-label="Favoritar">${coracao(l.fav)}</span>`}
   </button>`;
 }
+const SETA_CIMA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>';
+const SETA_BAIXO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+function moverFav(id, passo) {
+  const ids = S.lista.map(l => l.id), i = ids.indexOf(id), j = i + passo;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  CONTA.salvarOrdemFavs(ids);
+  const y = scrollY; render(); window.scrollTo(0, y);
+  const c = document.querySelector(`#grade .card[data-id="${CSS.escape(id)}"]`); if (c) { c.classList.add("movido"); setTimeout(() => c.classList.remove("movido"), 500); }
+}
+$("#btn-organizar").addEventListener("click", () => { S.organizando = !S.organizando; render(); });
 function maisCards() {
   const prox = S.lista.slice(S.mostrados, S.mostrados + 40); if (!prox.length) return;
   $("#grade").insertAdjacentHTML("beforeend", prox.map(card).join("")); S.mostrados += prox.length;
@@ -231,6 +260,9 @@ $("#chips").addEventListener("click", e => {
   salvarFiltro(); render();
 });
 $("#grade").addEventListener("click", async e => {
+  const mv = e.target.closest("[data-mover]");
+  if (mv) { e.stopPropagation(); moverFav(mv.dataset.id, +mv.dataset.mover); return; }
+  if (S.organizando) return;
   const fav = e.target.closest("[data-fav]");
   if (fav) { e.stopPropagation(); const on = await alternarFav(fav.dataset.fav); fav.classList.toggle("on", on); fav.innerHTML = coracao(on); return; }
   const c = e.target.closest(".card"); if (c) abrirLote(c.dataset.id);
@@ -241,6 +273,7 @@ async function alternarFav(id) {
   toast(on ? "Adicionado aos favoritos" : "Removido dos favoritos");
   const ok = await CONTA.favoritar(id, on);
   if (!ok) { l.fav = !on; toast("Não consegui salvar o favorito. Confira a conexão."); }
+  else if (CONTA.prefs.ordem_favs.length) CONTA.salvarOrdemFavs(on ? [id, ...CONTA.prefs.ordem_favs.filter(x => x !== id)] : CONTA.prefs.ordem_favs.filter(x => x !== id));
   if (S.aba === "favoritos") render();
   return l.fav;
 }
@@ -322,10 +355,10 @@ $("#aplicar").addEventListener("click", () => { S.filtro = S.rascunho; salvarFil
 
 /* ---------------- ordenação ---------------- */
 $("#btn-ordem").addEventListener("click", () => {
-  $("#corpo-ordem").innerHTML = ORDENS.map(([k, t, s]) => `<button class="opcao ${S.ordem === k ? "on" : ""}" data-o="${k}"><span><b>${t}</b>${s ? `<small>${s}</small>` : ""}</span><i class="radio"></i></button>`).join("");
+  $("#corpo-ordem").innerHTML = ordensDaAba(S.aba).map(([k, t, s]) => `<button class="opcao ${S.ordem === k ? "on" : ""}" data-o="${k}"><span><b>${t}</b>${s ? `<small>${s}</small>` : ""}</span><i class="radio"></i></button>`).join("");
   abrir("#folha-ordem");
 });
-$("#corpo-ordem").addEventListener("click", e => { const b = e.target.closest("[data-o]"); if (!b) return; S.ordem = b.dataset.o; LS.set("ordem", S.ordem); setTimeout(() => { fechar(); render(); }, 120); b.parentNode.querySelectorAll(".opcao").forEach(o => o.classList.toggle("on", o === b)); });
+$("#corpo-ordem").addEventListener("click", e => { const b = e.target.closest("[data-o]"); if (!b) return; S.ordem = b.dataset.o; setTimeout(() => { fechar(); render(); }, 120); b.parentNode.querySelectorAll(".opcao").forEach(o => o.classList.toggle("on", o === b)); });
 
 /* ---------------- ficha do lote ---------------- */
 // endereço para o Google Maps: só texto do anúncio, sem dados pessoais; abre a busca do próprio Google

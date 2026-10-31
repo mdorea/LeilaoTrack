@@ -1,11 +1,9 @@
 /* LeilãoTrack · mapa dos lotes (agrupados por cidade) */
 "use strict";
 const Mapa = (() => {
-  const TILES = {
-    claro: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    escuro: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-  };
-  const CREDITO = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>';
+  // mapa público do OpenStreetMap (sem chave); no tema escuro as cores são invertidas por CSS
+  const TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const CREDITO = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>';
   const BRASIL = [[-33.8, -74], [5.3, -34.7]];
   let mapa = null, camada = null, fundo = null, temaFundo = "", coords = null, grupos = [], semCidade = 0, pronto = null, ultimaLista = null;
 
@@ -33,9 +31,9 @@ const Mapa = (() => {
     mapa.on("zoomend moveend", desenhar);
   }
   function trocarFundo() {
-    const t = tema(); if (t === temaFundo) return;
-    if (fundo) mapa.removeLayer(fundo);
-    fundo = L.tileLayer(TILES[t], {attribution: CREDITO, subdomains: "abcd", maxZoom: 19, detectRetina: false, crossOrigin: false}).addTo(mapa);
+    const t = tema();
+    $("#mapa").classList.toggle("mapa-escuro", t === "escuro");
+    if (!fundo) fundo = L.tileLayer(TILE, {attribution: CREDITO, maxZoom: 19, referrerPolicy: "strict-origin-when-cross-origin"}).addTo(mapa);
     temaFundo = t;
   }
 

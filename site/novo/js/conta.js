@@ -2,7 +2,8 @@
 "use strict";
 const CONTA = {
   perfil: null,
-  prefs: {ufs: [], tipos: [], configurado: false, alertas_visto: null},
+  prefs: {ufs: [], tipos: [], configurado: false, alertas_visto: null, ordem_favs: []},
+  ajustes: {},
   favs: new Set(),
   calculos: new Map(),
   get uid() { return SB.usuario && SB.usuario.id; },
@@ -13,7 +14,7 @@ const CONTA = {
     this.perfil = Array.isArray(p) ? p[0] : null;
     if (!this.perfil) return false;
     const [prefs, favs, calcs] = await Promise.all([
-      SB.ler("preferencias", "select=ufs,tipos,configurado,alertas_visto&limit=1"),
+      SB.ler("preferencias", "select=ufs,tipos,configurado,alertas_visto,ajustes&limit=1"),
       SB.ler("favoritos", "select=lote_id&limit=1000"),
       SB.ler("calculos", "select=lote_id,valores&limit=1000"),
     ]);
@@ -23,7 +24,11 @@ const CONTA = {
         ufs: (pr.ufs || []).filter(u => UFS.includes(u)),
         tipos: (pr.tipos || []).filter(t => TIPOS_PREF.includes(t)),
         configurado: !!pr.configurado, alertas_visto: typeof pr.alertas_visto === "string" ? pr.alertas_visto : null,
+        ordem_favs: [],
       };
+      this.ajustes = pr.ajustes && typeof pr.ajustes === "object" && !Array.isArray(pr.ajustes) ? pr.ajustes : {};
+      const of = this.ajustes.ordem_favs;
+      this.prefs.ordem_favs = Array.isArray(of) ? of.filter(x => typeof x === "string" && /^[a-z]{2,10}:[A-Za-z0-9_.-]{1,60}$/.test(x)).slice(0, 150) : [];
     } else {
       await SB.inserir("preferencias", {user_id: this.uid}, "ignorar").catch(() => {});
     }
@@ -32,7 +37,7 @@ const CONTA = {
     return true;
   },
   limpar() {
-    this.perfil = null; this.prefs = {ufs: [], tipos: [], configurado: false, alertas_visto: null};
+    this.perfil = null; this.prefs = {ufs: [], tipos: [], configurado: false, alertas_visto: null, ordem_favs: []}; this.ajustes = {};
     this.favs = new Set(); this.calculos = new Map();
   },
 
@@ -49,6 +54,17 @@ const CONTA = {
     await SB.atualizar("preferencias", "user_id=eq." + encodeURIComponent(this.uid),
       {ufs, tipos, configurado: true, atualizado_em: new Date().toISOString()});
     this.prefs.ufs = ufs; this.prefs.tipos = tipos; this.prefs.configurado = true;
+  },
+  // ordem dos favoritos escolhida pela pessoa (guardada na conta, vale em todos os aparelhos)
+  _tOrdem: null,
+  salvarOrdemFavs(ids) {
+    this.prefs.ordem_favs = ids.filter(id => this.favs.has(id)).slice(0, 150);
+    clearTimeout(this._tOrdem);
+    this._tOrdem = setTimeout(() => {
+      this.ajustes = Object.assign({}, this.ajustes, {ordem_favs: this.prefs.ordem_favs});
+      SB.atualizar("preferencias", "user_id=eq." + encodeURIComponent(this.uid), {ajustes: this.ajustes})
+        .catch(() => toast("Não consegui salvar a ordem agora. Confira a conexão."));
+    }, 800);
   },
   _tVisto: null,
   salvarVisto(ate) {
