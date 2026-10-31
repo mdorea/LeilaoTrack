@@ -202,6 +202,56 @@ def atualizar_historico(lotes):
     return lista
 
 
+# ---- vendas reais da cidade de São Paulo (ITBI, dados abertos) ----
+def atualizar_itbi(lotes):
+    """Resumo das vendas reais de SP: refeito no máximo 1 vez por semana e guardado no Supabase.
+    Cada lote de São Paulo (capital) recebe o preço por m² das vendas da mesma rua ou do bairro."""
+    if not SB:
+        return None
+    try:
+        import itbi_sp
+    except Exception as e:
+        log(f"ITBI SP: módulo indisponível ({e})")
+        return None
+    resumo = None
+    try:
+        resumo = json.loads(gzip.decompress(sb_baixar("itbi-sp.json.gz")).decode("utf-8"))
+    except Exception:
+        resumo = None
+    velho = not resumo or resumo.get("gerado", "") < (AGORA - timedelta(days=7)).strftime("%Y-%m-%d")
+    if velho:
+        try:
+            ini = time.time()
+            get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": itbi_sp.UA}), timeout=120).read().decode("utf-8", "replace")
+            vendas = []
+            for u in itbi_sp.links_planilhas(get)[:2]:   # ano atual e anterior
+                dados = urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": itbi_sp.UA}), timeout=300).read()
+                caminho = os.path.join(os.environ.get("RUNNER_TEMP", "/tmp"), "itbi-sp.xlsx")
+                with open(caminho, "wb") as f:
+                    f.write(dados)
+                vendas += itbi_sp.ler_planilha(caminho, meses=18)
+            if len(vendas) < 5000:
+                raise ValueError(f"só {len(vendas)} vendas lidas")
+            novo = itbi_sp.resumir(vendas)
+            novo["gerado"] = AGORA.strftime("%Y-%m-%d")
+            sb_enviar("itbi-sp.json.gz", gzip.compress(json.dumps(novo, separators=(",", ":")).encode("utf-8"), 9), "application/gzip")
+            resumo = novo
+            log(f"ITBI SP: {novo['vendas']} vendas resumidas ({len(novo['r'])} ruas, {len(novo['b'])} bairros) em {round(time.time() - ini)}s")
+        except Exception as e:
+            log(f"ITBI SP: não atualizei agora ({e}); {'uso o resumo anterior' if resumo else 'sem dados'}")
+    if not resumo:
+        return None
+    n = 0
+    for l in lotes.values():
+        l.pop("itbi", None)
+        e = itbi_sp.para_lote(l, resumo)
+        if e:
+            l["itbi"] = e
+            n += 1
+    log(f"ITBI SP: {n} lotes com vendas reais na rua ou no bairro")
+    return {"gerado": resumo.get("gerado"), "periodo": resumo.get("periodo", []), "vendas": resumo.get("vendas", 0)}
+
+
 def brl(v):
     return "—" if v is None else "R$ " + f"{v:,.0f}".replace(",", ".")
 
@@ -345,9 +395,10 @@ def main():
         coletores.finalizar(l)
 
     historico = atualizar_historico(lotes)
+    itbi_info = atualizar_itbi(lotes)
 
     estado = {"ultima": AGORA_S, "sites": sites_info, "proxima": (AGORA + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S"),
-              "intervalo": 120, "nuvem": True}
+              "intervalo": 120, "nuvem": True, **({"itbi_sp": itbi_info} if itbi_info else {})}
     publicar = {"lotes": {"lotes": list(lotes.values()), "estado": estado, "gerado": AGORA_S},
                 "eventos": eventos, "estado": estado}
     if SB:

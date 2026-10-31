@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Instalar criptografia
-        run: pip install cryptography
+        run: pip install cryptography openpyxl
       - id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
       - name: Ler os sites

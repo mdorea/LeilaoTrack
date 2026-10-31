@@ -7,9 +7,9 @@ const ORDENS = [
 const ORDEM_MINHA = ["minha", "Minha ordem", "você organiza com as setas"];
 const ordensDaAba = aba => aba === "favoritos" ? [ORDEM_MINHA, ...ORDENS] : ORDENS;
 function ordemSalva(aba) { const v = LS.get(aba === "favoritos" ? "ordem_fav" : "ordem"); return ordensDaAba(aba).some(o => o[0] === v) ? v : (aba === "favoritos" ? "minha" : "desconto"); }
-const FILTRO0 = {sites: [], tipos: [], pracas: [], ocup: [], conf: [], ufs: [], cidades: [], vmin: 0, vmax: 0, dmin: 0, prazo: "", novos: false, fecham: false, top: true};
+const FILTRO0 = {sites: [], tipos: [], pracas: [], ocup: [], conf: [], itbi: [], ufs: [], cidades: [], vmin: 0, vmax: 0, dmin: 0, prazo: "", novos: false, fecham: false, top: true};
 const VMAX = 3000000;
-const CHAVES_LISTA = ["sites", "tipos", "pracas", "ocup", "conf", "ufs", "cidades"];
+const CHAVES_LISTA = ["sites", "tipos", "pracas", "ocup", "conf", "itbi", "ufs", "cidades"];
 const CONF_OPCOES = ["Alta", "Média", "Baixa", "Sem estimativa"];
 const confChave = l => l._est ? l._est.conf.charAt(0).toUpperCase() + l._est.conf.slice(1) : "Sem estimativa";
 
@@ -94,6 +94,7 @@ function filtrar(base, f, ignorar) {
     if (f.pracas.length && !f.pracas.includes(pracaChave(l.praca_atual))) return false;
     if (f.ocup.length && !f.ocup.includes(ocupChave(l))) return false;
     if (f.conf.length && !f.conf.includes(confChave(l))) return false;
+    if (f.itbi.length && !l.itbi) return false;
     if (f.ufs.length && !f.ufs.includes(l.uf)) return false;
     if (ignorar !== "cidades" && f.cidades.length && !f.cidades.includes(l.cidade + "/" + l.uf)) return false;
     if (f.vmin && (l.valor || 0) < f.vmin) return false;
@@ -357,7 +358,8 @@ function renderFiltros() {
     grupo("Praça", "pracas", ["1ª praça", "2ª praça", "Praça única"].map(p => [p, null])) +
     grupo("Ocupação", "ocup", ["Desocupado", "Ocupado", "Não informado"].map(p => [p, null])) +
     grupo("Valor estimado · confiança", "conf", CONF_OPCOES.map(c => [c, vivos.filter(l => confChave(l) === c).length])) +
-    `<p class="texto-ajuda" style="margin:6px 2px 0">Selo da estimativa de valor de mercado (só casas e apartamentos). “Alta” aparece quando houver dados de vendas reais da região.</p>` +
+    `<p class="texto-ajuda" style="margin:6px 2px 0">Selo da estimativa de valor de mercado (só casas e apartamentos), calculada com os próprios leilões.</p>` +
+    grupo("Vendas reais na região", "itbi", [["Com vendas reais (cidade de SP)", vivos.filter(l => l.itbi).length]]) +
     `<div class="sec">Faixa de valor <span id="lbl-valor"></span></div>
      <div class="faixa"><div class="trilho"></div><div class="ativo" id="faixa-ativa"></div>
        <input type="range" id="vmin" min="0" max="${VMAX}" step="10000" value="${f.vmin || 0}" aria-label="Valor mínimo">
@@ -447,6 +449,36 @@ function blocoEstimativa(l) {
     </details>
   </div>`;
 }
+const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const mesAno = ym => { const m = /^(\d{4})-(\d{2})$/.exec(ym || ""); return m ? `${MESES_CURTOS[+m[2] - 1]}/${m[1]}` : ""; };
+function blocoItbi(l) {
+  const v = l.itbi;
+  if (!v || !(v.m2 > 0) || !(v.n > 0)) return "";
+  const r$ = x => "R$ " + Math.round(x).toLocaleString("pt-BR");
+  const tipo = l.tipo === "Casa" ? "casas" : "apartamentos";
+  const per = (S.estado && S.estado.itbi_sp && S.estado.itbi_sp.periodo) || [];
+  const quando = per.length === 2 ? `${mesAno(per[0])} a ${mesAno(per[1])}` : "últimos 18 meses";
+  const onde = v.nivel === "rua" ? `na ${esc(v.local || "mesma rua")}` : `no bairro ${esc(v.local || "")}`;
+  const a = Number(l.area_constr) || 0;
+  const meuM2 = a > 0 && l.valor > 0 ? l.valor / a : null;
+  let comp = "";
+  if (meuM2 && (!Estimativa._serve(l) || meuM2 / v.m2 < .2)) {
+    comp = `<div class="texto-ajuda" style="margin-top:8px">Lance de ${r$(meuM2)}/m², baixo demais para comparar: confira a área no edital e se o lote é o imóvel inteiro.</div>`;
+  } else if (meuM2) {
+    const dif = Math.round((1 - meuM2 / v.m2) * 100);
+    comp = `<div class="est-desc ${dif >= 3 ? "bom" : dif <= -3 ? "ruim" : ""}">Lance: ${r$(meuM2)}/m² ${dif >= 3 ? `· ${dif}% abaixo da mediana das vendas` : dif <= -3 ? `· ${-dif}% acima da mediana das vendas` : "· perto da mediana das vendas"}</div>`;
+  }
+  return `<div class="caixa vidro est itbi">
+    <div class="r"><div><div class="rot">Vendas reais na região</div><div class="valor-grande est-faixa">${r$(v.m2)}/m²</div></div><span class="pill est-conf fonte">Prefeitura de SP</span></div>
+    <div class="texto-ajuda" style="margin-top:4px">Mediana de ${v.n.toLocaleString("pt-BR")} vendas de ${tipo} ${onde} · metade entre ${r$(v.p25)} e ${r$(v.p75)}/m²</div>
+    ${comp}
+    <details class="est-como"><summary>De onde vem</summary>
+      <p>Guias de ITBI pagas na compra e venda de imóveis inteiros, publicadas pela Secretaria da Fazenda de São Paulo (${quando}). É o valor declarado na venda, dividido pela área construída do IPTU.</p>
+      ${l.tipo === "Apartamento" ? "<p>Nos apartamentos, a área do IPTU inclui parte das áreas comuns. Por isso o m² dessas vendas costuma ficar abaixo do m² calculado pela área útil do anúncio: o lote pode estar mais barato do que a comparação mostra.</p>" : ""}
+      <p>Estado, padrão e documentação mudam o preço. Use como referência e confira o laudo no edital.</p>
+    </details>
+  </div>`;
+}
 function abrirLote(id) {
   const l = S.lotes.find(x => x.id === id); if (!l) return;
   const pr = (Array.isArray(l.pracas) ? l.pracas : []).map(p => `<div class="${p.data && p.data < fmtLocal() ? "praca-passada" : ""}"><span>${esc(pracaCurta(p.nome))} · ${esc(fmtData(p.data))}</span><span>${fmtBRL(p.valor)}</span></div>`).join("");
@@ -467,6 +499,7 @@ function abrirLote(id) {
       <div class="r rot"><span>${l.encerra ? "Leilão " + esc(fmtData(l.encerra)) : ""}</span><span style="color:var(--acc2);font-weight:600">${esc(falta(l.encerra))}</span></div>
     </div>
     ${blocoEstimativa(l)}
+    ${blocoItbi(l)}
     ${t ? `<div class="sec">Por que está no seu Top 15 (#${t.pos})</div><ul class="top-motivos">${t.motivos.map(m => `<li>${esc(m)}</li>`).join("")}${t.alertas.map(m => `<li style="color:var(--hot)">Atenção: ${esc(m)}</li>`).join("")}</ul>` : ""}
     ${pr ? `<div class="sec">Praças</div><div class="linhas">${pr}</div>` : ""}
     <div class="sec">Detalhes</div><div class="linhas">${linhas.map(([a, b]) => `<div><span>${a}</span><span>${esc(b)}</span></div>`).join("")}</div>

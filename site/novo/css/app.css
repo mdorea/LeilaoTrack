@@ -478,3 +478,4 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .est-como[open] summary::after{content:" ⌄"}
 .est-como p{margin:8px 0 0;line-height:1.45}
 .est-card{color:#13915E}
+.est-conf.fonte{background:#5B6CC9}
