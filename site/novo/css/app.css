@@ -494,3 +494,9 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .aviso-samsung[hidden]{display:none}
 .aviso-samsung p{margin:0}
 .aviso-samsung .btn-sec{height:40px}
+
+/* Samsung Internet com modo escuro: o navegador escurece gradientes; texto com gradiente vira cor sólida */
+.samsung .marca-txt b span,.samsung [data-tema] .marca-txt b span{background:none;-webkit-text-fill-color:currentColor;color:#E26A2C}
+.samsung .t4 b{background:none;-webkit-text-fill-color:currentColor;color:#8C5AFF}
+.aviso-botoes{display:flex;gap:8px}
+.aviso-botoes .btn-sec{flex:1}

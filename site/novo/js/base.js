@@ -79,7 +79,13 @@ function avisoSamsung() {
   if (document.documentElement.dataset.tema !== "claro" || LS.get("aviso_samsung")) return;
   setTimeout(() => { const a = $("#aviso-samsung"); if (a && document.documentElement.dataset.tema === "claro") a.hidden = false; }, 1500);
 }
-document.addEventListener("click", e => { if (e.target.closest("#aviso-samsung-ok")) { LS.set("aviso_samsung", 1); $("#aviso-samsung").hidden = true; } });
+document.addEventListener("click", e => {
+  const ok = e.target.closest("#aviso-samsung-ok"), esc = e.target.closest("#aviso-samsung-escuro");
+  if (!ok && !esc) return;
+  LS.set("aviso_samsung", 1); $("#aviso-samsung").hidden = true;
+  if (esc) { escolherTema("escuro"); toast("Tema escuro"); }
+});
+if (ehSamsung()) document.documentElement.classList.add("samsung");
 function menuTema(abrirMenu) {
   const m = $("#menu-tema"); m.hidden = !abrirMenu; $("#astro").setAttribute("aria-expanded", String(abrirMenu));
 }
@@ -93,7 +99,8 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") menuTema(fal
 let TEMA = LS.get("tema", "auto");
 function aplicarTema(nome) {
   const h = new Date().getHours(); const dia = h >= 6 && h < 18;
-  const t = TEMA === "auto" ? (dia ? "claro" : "escuro") : TEMA;
+  const escuroForcado = ehSamsung() && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;
+  const t = TEMA === "auto" ? (dia && !escuroForcado ? "claro" : "escuro") : TEMA;
   document.documentElement.dataset.tema = t;
   $('meta[name=theme-color]').content = t === "claro" ? "#FFF3EA" : "#1E1640";
   // "only light" impede o modo escuro automático do navegador (Chrome/Samsung no Android) de escurecer o tema claro
