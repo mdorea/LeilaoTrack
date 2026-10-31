@@ -86,6 +86,8 @@ function aplicarTema(nome) {
   const t = TEMA === "auto" ? (dia ? "claro" : "escuro") : TEMA;
   document.documentElement.dataset.tema = t;
   $('meta[name=theme-color]').content = t === "claro" ? "#FFF3EA" : "#1E1640";
+  // "only light" impede o modo escuro automático do navegador (Chrome/Samsung no Android) de escurecer o tema claro
+  $('meta[name=color-scheme]').content = t === "claro" ? "only light" : "dark";
   if (nome === undefined) return;
   const s = h >= 5 && h < 12 ? "Bom dia" : h >= 12 && h < 18 ? "Boa tarde" : "Boa noite";
   $("#saudacao").textContent = nome ? `${s}, ${nome}` : s;

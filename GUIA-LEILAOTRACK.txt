@@ -9,7 +9,7 @@ COMO FICA
 - O site atual continua funcionando no endereço de sempre até você
   decidir trocar (passo 9).
 - A leitura dos sites (Frazão, Zuk, Mega, Biasi) continua no GitHub a cada
-  2 horas, UMA vez para todo o grupo. Os lotes passam a ficar num
+  hora (a Zuk, a cada 2 horas), UMA vez para todo o grupo. Os lotes passam a ficar num
   arquivo privado do Supabase, que só quem está logado consegue ler.
 - Cada pessoa tem login próprio, favoritos, alertas, preferências do
   Top 15 e cálculos só dela.

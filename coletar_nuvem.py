@@ -440,8 +440,8 @@ def main():
     historico = atualizar_historico(lotes)
     itbi_info = atualizar_itbi(lotes)
 
-    estado = {"ultima": AGORA_S, "sites": sites_info, "proxima": (AGORA + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S"),
-              "intervalo": 120, "nuvem": True, **({"itbi_sp": itbi_info} if itbi_info else {})}
+    estado = {"ultima": AGORA_S, "sites": sites_info, "proxima": (AGORA + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S"),
+              "intervalo": 60, "nuvem": True, **({"itbi_sp": itbi_info} if itbi_info else {})}
     publicar = {"lotes": {"lotes": list(lotes.values()), "estado": estado, "gerado": AGORA_S},
                 "eventos": eventos, "estado": estado}
     if SB:

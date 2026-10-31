@@ -235,7 +235,7 @@ async function renderAjustes() {
     <div class="painel vidro"><h4>Aparência</h4>
       <div class="chips wrap" id="aj-temas">${[["auto", "Automático (dia/noite)"], ["claro", "Claro"], ["escuro", "Escuro"]].map(([v, t]) => `<button class="chip ${TEMA === v ? "on" : "vidro"}" data-tema="${v}">${t}</button>`).join("")}</div></div>
     <div class="painel vidro"><h4>Atualização automática</h4>${statusSites(est)}
-      <p class="texto-ajuda">Os sites são lidos na nuvem a cada <b>2 horas</b>, uma vez só para todo o grupo.<br>Última leitura: <b>${esc(f(est.ultima))}</b> · próxima: <b>~${esc(f(est.proxima))}</b></p></div>
+      <p class="texto-ajuda">Os sites são lidos na nuvem a cada <b>hora</b> (a Zuk, a cada 2 horas), uma vez só para todo o grupo.<br>Última leitura: <b>${esc(f(est.ultima))}</b> · próxima: <b>~${esc(f(est.proxima))}</b></p></div>
     <div class="painel vidro"><h4>Instalar no celular</h4>
       <p class="texto-ajuda" style="margin-top:0">Abra este endereço no celular e toque em <b>Compartilhar › Adicionar à Tela de Início</b> (iPhone) ou <b>⋮ › Adicionar à tela inicial</b> (Android).</p></div>
     <div id="aj-admin"></div>`;
