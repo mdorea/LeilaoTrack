@@ -177,6 +177,31 @@ def baixar_anterior(nome, padrao):
         return padrao
 
 
+# ---- histórico para comparar preços: casas e apartamentos dos últimos 12 meses ----
+# fica só o essencial (tipo, local, área construída, valor da 1ª praça), mesmo depois que o lote sai do site
+RUIM_HIST = re.compile(r"direito|parte ideal|fra[çc][ãa]o|nua[ -]propriedade|usufruto|mea[çc][ãa]o|\d+(,\d+)?\s*%|cota parte|quinh|terreno de", re.I)
+
+
+def atualizar_historico(lotes):
+    hist = {}
+    for r in (_SB_ANTERIOR or {}).get("historico", []) if isinstance(_SB_ANTERIOR, dict) else []:
+        if isinstance(r, dict) and isinstance(r.get("i"), str):
+            hist[r["i"]] = r
+    hoje = AGORA_S[:10]
+    for l in lotes.values():
+        a, ref = l.get("area_constr"), l.get("referencia")
+        if l.get("tipo") not in ("Casa", "Apartamento") or not a or not ref or not l.get("cidade") or not l.get("uf"):
+            continue
+        if RUIM_HIST.search(l.get("titulo") or ""):
+            continue
+        hist[l["id"]] = {"i": l["id"], "t": l["tipo"], "c": l["cidade"], "u": l["uf"], "b": l.get("bairro") or "",
+                         "a": a, "r": ref, "d": hoje}
+    corte = (AGORA - timedelta(days=365)).strftime("%Y-%m-%d")
+    lista = [r for r in hist.values() if r.get("d", "") >= corte]
+    log(f"Histórico de comparação: {len(lista)} imóveis (12 meses)")
+    return lista
+
+
 def brl(v):
     return "—" if v is None else "R$ " + f"{v:,.0f}".replace(",", ".")
 
@@ -239,7 +264,7 @@ def main():
         ini = time.time()
         try:
             http = coletores.Http(pausa=pausas.get(site, 1.5))
-            if site == "Biasi":
+            if site in ("Biasi", "Frazão"):
                 lidos, completo = func(http, log, anteriores=lotes)
             elif site == "Mega":
                 cats = ("imoveis", "veiculos") if CFG.get("incluir_veiculos") else ("imoveis",)
@@ -319,12 +344,15 @@ def main():
     for l in lotes.values():
         coletores.finalizar(l)
 
+    historico = atualizar_historico(lotes)
+
     estado = {"ultima": AGORA_S, "sites": sites_info, "proxima": (AGORA + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S"),
               "intervalo": 120, "nuvem": True}
     publicar = {"lotes": {"lotes": list(lotes.values()), "estado": estado, "gerado": AGORA_S},
                 "eventos": eventos, "estado": estado}
     if SB:
-        pacote = {"lotes": list(lotes.values()), "eventos": eventos, "estado": estado, "gerado": AGORA_S}
+        pacote = {"lotes": list(lotes.values()), "eventos": eventos, "estado": estado, "gerado": AGORA_S,
+                  "historico": historico}
         bruto = gzip.compress(json.dumps(pacote, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), 9)
         try:
             antigo = sb_versao().get("arquivo", "")

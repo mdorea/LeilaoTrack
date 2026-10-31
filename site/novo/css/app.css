@@ -465,6 +465,7 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 
 /* valor de mercado estimado */
 .caixa.est .est-faixa{font-size:20px;line-height:1.25}
+.est-conf.alta{background:#13915E}
 .est-conf.media{background:#C98A1B}
 .est-conf.baixa{background:#8A84A3}
 .est-desc{margin-top:8px;font-size:13px;font-weight:600;color:var(--mu)}
