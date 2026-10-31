@@ -462,3 +462,18 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .ok-tema{font-style:normal;font-weight:700;color:var(--acc2);visibility:hidden}
 .menu-tema [aria-checked="true"] .ok-tema{visibility:visible}
 .menu-tema [aria-checked="true"]{background:var(--glass)}
+
+/* valor de mercado estimado */
+.caixa.est .est-faixa{font-size:20px;line-height:1.25}
+.est-conf.media{background:#C98A1B}
+.est-conf.baixa{background:#8A84A3}
+.est-desc{margin-top:8px;font-size:13px;font-weight:600;color:var(--mu)}
+.est-desc.bom{color:#13915E}
+.est-desc.ruim{color:var(--danger)}
+.est-como{margin-top:10px;font-size:12.5px;color:var(--mu)}
+.est-como summary{cursor:pointer;font-weight:600;color:var(--tx);list-style:none}
+.est-como summary::-webkit-details-marker{display:none}
+.est-como summary::after{content:" ›"}
+.est-como[open] summary::after{content:" ⌄"}
+.est-como p{margin:8px 0 0;line-height:1.45}
+.est-card{color:#13915E}

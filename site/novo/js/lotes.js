@@ -2,7 +2,8 @@
 "use strict";
 const ORDENS = [
   ["desconto", "Maior desconto", "sobre a 1ª praça"], ["menor", "Menor valor", ""], ["maior", "Maior valor", ""],
-  ["encerra", "Encerra primeiro", "próximos leilões no topo"], ["recentes", "Mais recentes", "entrou por último"], ["lances", "Mais lances", "mais disputados"]];
+  ["encerra", "Encerra primeiro", "próximos leilões no topo"], ["recentes", "Mais recentes", "entrou por último"], ["lances", "Mais lances", "mais disputados"],
+  ["estimado", "Abaixo do estimado", "lance x valor estimado"]];
 const ORDEM_MINHA = ["minha", "Minha ordem", "você organiza com as setas"];
 const ordensDaAba = aba => aba === "favoritos" ? [ORDEM_MINHA, ...ORDENS] : ORDENS;
 function ordemSalva(aba) { const v = LS.get(aba === "favoritos" ? "ordem_fav" : "ordem"); return ordensDaAba(aba).some(o => o[0] === v) ? v : (aba === "favoritos" ? "minha" : "desconto"); }
@@ -63,6 +64,8 @@ function aplicarPacote(p) {
     l._enc = l.encerra ? dt(l.encerra).getTime() : Infinity;
     if (isNaN(l._enc)) l._enc = Infinity;
   }
+  Estimativa.calcular(S.lotes);
+  for (const l of S.lotes) if (l._est && l._est.fora) { l._estFora = true; l._est = null; }
   _rankCache = {k: null, v: null};
 }
 function marcarFavs() { for (const l of S.lotes) l.fav = CONTA.favs.has(l.id); }
@@ -103,7 +106,8 @@ function ordenar(a) {
     desconto: (x, y) => (y.desconto || 0) - (x.desconto || 0) || (x.valor || 0) - (y.valor || 0),
     menor: (x, y) => (x.valor || 9e12) - (y.valor || 9e12), maior: (x, y) => (y.valor || 0) - (x.valor || 0),
     encerra: (x, y) => x._enc - y._enc, recentes: (x, y) => (y.visto || "").localeCompare(x.visto || "") || x._enc - y._enc,
-    lances: (x, y) => (y.lances || 0) - (x.lances || 0)}[S.ordem];
+    lances: (x, y) => (y.lances || 0) - (x.lances || 0),
+    estimado: (x, y) => (y._est ? y._est.desc : -1e9) - (x._est ? x._est.desc : -1e9) || (x.valor || 0) - (y.valor || 0)}[S.ordem];
   if (S.ordem === "minha") { // favoritos novos (ainda sem posição) aparecem no topo
     const pos = new Map(CONTA.prefs.ordem_favs.map((id, i) => [id, i]));
     return a.sort((x, y) => (pos.has(x.id) ? pos.get(x.id) : -1) - (pos.has(y.id) ? pos.get(y.id) : -1));
@@ -213,6 +217,7 @@ function card(l) {
         <div class="topo-card">${t ? `<span class="rank">#${t.pos}</span>` : ""}<i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(l.site)}${l.novo ? '<span class="novo">· novo</span>' : ""}${!l.ativo ? " · saiu do site" : ""}</div>
         <div class="tit">${esc(l.titulo)}</div>
         ${t ? `<div class="motivo">${esc(t.motivos.slice(0, 2).join(" · "))}</div>` : ""}
+        ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}
         <div class="loc">${esc([l.bairro && !l.titulo.includes(l.bairro) ? l.bairro : "", l.cidade && (l.cidade + (l.uf ? " · " + l.uf : ""))].filter(Boolean).join(" · ") || l.tipo)}</div>
       </div>
       <div class="baixo"><span class="preco">${fmtBRL(l.valor)}</span><span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
@@ -404,6 +409,30 @@ function linkMaps(l) {
   if (!l.cidade && !l.endereco) return "";
   return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(partes.join(", ").slice(0, 250));
 }
+function textoDescEst(e) {
+  if (e.desc == null) return "";
+  return e.desc >= 3 ? `lance ${e.desc}% abaixo do estimado` : e.desc <= -3 ? `lance ${-e.desc}% acima do estimado` : "lance perto do estimado";
+}
+function blocoEstimativa(l) {
+  const e = l._est;
+  if (!e) {
+    if (!["Casa", "Apartamento"].includes(l.tipo)) return "";
+    const motivo = l._estFora ? "A avaliação deste lote foge muito da dos imóveis parecidos da região. A área do anúncio pode ser do terreno, ou o lote pode ser só uma parte do imóvel: por isso não estimamos."
+      : "Sem imóveis parecidos suficientes na região para estimar com algum cuidado.";
+    return `<div class="caixa vidro est"><div class="rot">Valor de mercado estimado</div><p class="texto-ajuda" style="margin:6px 0 0">${motivo}</p></div>`;
+  }
+  const tipo = l.tipo === "Casa" ? "casas" : "apartamentos";
+  const acerto = e.conf === "média" ? "cerca de 6 em cada 10" : "cerca de 1 em cada 3";
+  return `<div class="caixa vidro est">
+    <div class="r"><div><div class="rot">Valor de mercado estimado</div><div class="valor-grande est-faixa">${Estimativa.curto(e.min)} a ${Estimativa.curto(e.max)}</div></div><span class="pill est-conf ${e.conf === "média" ? "media" : "baixa"}">Confiança ${esc(e.conf)}</span></div>
+    ${e.desc != null ? `<div class="est-desc ${e.desc >= 3 ? "bom" : e.desc <= -3 ? "ruim" : ""}">${esc(textoDescEst(e))} (meio da faixa ${esc(Estimativa.curto(e.meio))})</div>` : ""}
+    <details class="est-como"><summary>Como calculamos</summary>
+      <p>Pelo valor da 1ª praça por m² de ${e.n} ${tipo} em leilão ${e.nivel === "bairro" ? "no bairro " + esc(e.local) : "em " + esc(e.local)} (mediana R$ ${e.m2.toLocaleString("pt-BR")}/m²), vezes a área deste lote.</p>
+      <p>Testamos nos lotes reais: com confiança ${esc(e.conf)}, a estimativa ficou a até 20% da avaliação em ${acerto} casos. Estado, padrão, andar, vaga e se a área é do terreno ou construída mudam muito o preço.</p>
+      <p>É uma referência para triagem, não um laudo. Confira o laudo de avaliação no edital.</p>
+    </details>
+  </div>`;
+}
 function abrirLote(id) {
   const l = S.lotes.find(x => x.id === id); if (!l) return;
   const pr = (Array.isArray(l.pracas) ? l.pracas : []).map(p => `<div class="${p.data && p.data < fmtLocal() ? "praca-passada" : ""}"><span>${esc(pracaCurta(p.nome))} · ${esc(fmtData(p.data))}</span><span>${fmtBRL(p.valor)}</span></div>`).join("");
@@ -423,6 +452,7 @@ function abrirLote(id) {
       <div class="sep"></div>
       <div class="r rot"><span>${l.encerra ? "Leilão " + esc(fmtData(l.encerra)) : ""}</span><span style="color:var(--acc2);font-weight:600">${esc(falta(l.encerra))}</span></div>
     </div>
+    ${blocoEstimativa(l)}
     ${t ? `<div class="sec">Por que está no seu Top 15 (#${t.pos})</div><ul class="top-motivos">${t.motivos.map(m => `<li>${esc(m)}</li>`).join("")}${t.alertas.map(m => `<li style="color:var(--hot)">Atenção: ${esc(m)}</li>`).join("")}</ul>` : ""}
     ${pr ? `<div class="sec">Praças</div><div class="linhas">${pr}</div>` : ""}
     <div class="sec">Detalhes</div><div class="linhas">${linhas.map(([a, b]) => `<div><span>${a}</span><span>${esc(b)}</span></div>`).join("")}</div>
@@ -449,7 +479,8 @@ function abrirCalc(l, daPericia) {
   const soTerreno = /terreno de/i.test(l.titulo);
   $("#calc-tit").innerHTML = `<b>${esc(l.titulo)}</b><br>Valores iniciais estimados a partir do anúncio. Ajuste com o que estiver no edital.`;
   const salvo = CONTA.calculos.get(l.id);
-  const dados = {lance: l.valor, avaliacao: l.referencia && l.referencia > l.valor ? l.referencia : null, area: soTerreno ? null : l.area, cidade: l.cidade, tipo: l.tipo,
+  const aval = l.referencia && l.referencia > l.valor ? l.referencia : null;
+  const dados = {lance: l.valor, mercado: !aval && l._est ? l._est.meio : null, avaliacao: aval, area: soTerreno ? null : l.area, cidade: l.cidade, tipo: l.tipo,
     ocupado: !/desocup/i.test(l.ocupacao || ""), fixos: Object.assign({}, salvo || {}, daPericia || {})};
   Calc.render($("#calc-corpo"), dados);
   const fonte = $("#calc-fonte");
