@@ -479,3 +479,9 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .est-como p{margin:8px 0 0;line-height:1.45}
 .est-card{color:#13915E}
 .est-conf.fonte{background:#5B6CC9}
+
+/* lance atual */
+.preco .lance-tag{display:block;font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--acc2);margin-bottom:1px}
+.preco .min-praca{display:block;font-size:11px;font-weight:500;color:var(--mu);letter-spacing:0;margin-top:1px}
+.caixa .lance-min{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:14px;font-weight:600;align-items:center}
+.caixa .lance-min small{font-weight:500;color:var(--mu)}

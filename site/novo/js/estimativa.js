@@ -77,8 +77,9 @@ const Estimativa = (() => {
       // provavelmente está errado (terreno x construída, parte ideal...): não estima
       const ref = Number(l.referencia) || 0;
       if (ref > 0 && (ref / meio < .4 || ref / meio > 2.5)) { l._est = {fora: true}; continue; }
-      if (l.valor > 0 && l.valor / meio < .2) { l._est = {fora: true}; continue; }
-      const desc = l.valor > 0 ? Math.round((1 - l.valor / meio) * 100) : null;
+      const preco = l._preco || l.valor;  // lance atual, se já houver lance
+      if (preco > 0 && preco / meio < .2) { l._est = {fora: true}; continue; }
+      const desc = preco > 0 ? Math.round((1 - preco / meio) * 100) : null;
       l._est = {min, max, meio, m2: Math.round(med), conf, nivel, n: ok.length, desc,
         local: nivel === "bairro" ? l.bairro : l.cidade, area: a};
       n++;

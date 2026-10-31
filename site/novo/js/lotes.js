@@ -64,6 +64,10 @@ function aplicarPacote(p) {
     l.novo = !l.primeira_leitura && (l.visto || "") >= corte;
     l._busca = semAcento([l.titulo, l.bairro, l.cidade, l.uf, l.endereco, l.codigo, l.id, l.comitente, l.tipo, l.site].join(" "));
     l._enc = l.encerra ? dt(l.encerra).getTime() : Infinity;
+    // lance atual (lido na página do lote) vale só para a praça em andamento
+    l._lance = l.lance_atual > 0 && l.valor > 0 && l.lance_praca === l.praca_atual && l.lance_atual >= l.valor * .999 && !l.encerrado ? l.lance_atual : null;
+    l._preco = l._lance || l.valor;
+    l._desc = l.referencia > 0 && l._preco > 0 && l._preco < l.referencia ? Math.round((1 - l._preco / l.referencia) * 100) : 0;
     if (isNaN(l._enc)) l._enc = Infinity;
   }
   S.historico = Array.isArray(p.historico) ? p.historico.slice(0, 20000) : [];
@@ -97,9 +101,9 @@ function filtrar(base, f, ignorar) {
     if (f.itbi.length && !l.itbi) return false;
     if (f.ufs.length && !f.ufs.includes(l.uf)) return false;
     if (ignorar !== "cidades" && f.cidades.length && !f.cidades.includes(l.cidade + "/" + l.uf)) return false;
-    if (f.vmin && (l.valor || 0) < f.vmin) return false;
-    if (f.vmax && f.vmax < VMAX && (l.valor || 0) > f.vmax) return false;
-    if (f.dmin && (l.desconto || 0) < f.dmin) return false;
+    if (f.vmin && (l._preco || 0) < f.vmin) return false;
+    if (f.vmax && f.vmax < VMAX && (l._preco || 0) > f.vmax) return false;
+    if (f.dmin && (l._desc || 0) < f.dmin) return false;
     if (f.prazo) { const lim = {hoje: new Date().setHours(23, 59, 59, 999), "7": agora + 7 * 864e5, "30": agora + 30 * 864e5}[f.prazo]; if (!(l._enc <= lim)) return false; }
     if (f.novos && !l.novo) return false;
     if (f.fecham && !(l._enc - agora <= 48 * 36e5)) return false;
@@ -108,8 +112,8 @@ function filtrar(base, f, ignorar) {
 }
 function ordenar(a) {
   const by = {
-    desconto: (x, y) => (y.desconto || 0) - (x.desconto || 0) || (x.valor || 0) - (y.valor || 0),
-    menor: (x, y) => (x.valor || 9e12) - (y.valor || 9e12), maior: (x, y) => (y.valor || 0) - (x.valor || 0),
+    desconto: (x, y) => (y._desc || 0) - (x._desc || 0) || (x._preco || 0) - (y._preco || 0),
+    menor: (x, y) => (x._preco || 9e12) - (y._preco || 9e12), maior: (x, y) => (y._preco || 0) - (x._preco || 0),
     encerra: (x, y) => x._enc - y._enc, recentes: (x, y) => (y.visto || "").localeCompare(x.visto || "") || x._enc - y._enc,
     lances: (x, y) => (y.lances || 0) - (x.lances || 0),
     estimado: (x, y) => (y._est ? y._est.desc : -1e9) - (x._est ? x._est.desc : -1e9) || (x.valor || 0) - (y.valor || 0)}[S.ordem];
@@ -141,15 +145,15 @@ function rankearCalc(lista) {
   const mediana = a => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
   const res = [];
   for (const l of ok) {
-    if (RUIM_TOP.test(l.titulo) || !(l.area >= 25) || !(l.valor >= 30000) || !l.referencia || l._enc - agora < 60 * 36e5) continue;
-    const dfe = Math.max(0, 1 - l.valor / l.referencia), m2 = l.valor / l.area;
+    if (RUIM_TOP.test(l.titulo) || !(l.area >= 25) || !(l._preco >= 30000) || !l.referencia || l._enc - agora < 60 * 36e5) continue;
+    const dfe = Math.max(0, 1 - l._preco / l.referencia), m2 = l._preco / l.area;
     const lc = med.get(l.cidade + "|" + l.tipo) || [];
     const ref = lc.length >= 5 ? mediana(lc) : mediana(medT.get(l.tipo) || [m2]);
     const rel = m2 / ref, cid = (l.cidade || "").toLowerCase();
     const banco = /santander|bradesco|ita[uú]|daycoval|caixa|inter|enforce|banco/i.test(l.comitente || "");
     const desocup = /desocup/i.test(l.ocupacao || "");
     let s = Math.min(dfe, .6) / .6 * 35 + Math.max(0, Math.min(1, (1 - rel) / .6)) * 25;
-    s += GRANDE_TOP.has(cid) ? 15 : MEDIA_TOP.has(cid) ? 9 : 4; s += l.tipo === "Apartamento" ? 3 : 0; s += banco ? 10 : 4; s += desocup ? 7 : 0; s += l.valor >= 120000 && l.valor <= 900000 ? 5 : 0;
+    s += GRANDE_TOP.has(cid) ? 15 : MEDIA_TOP.has(cid) ? 9 : 4; s += l.tipo === "Apartamento" ? 3 : 0; s += banco ? 10 : 4; s += desocup ? 7 : 0; s += l._preco >= 120000 && l._preco <= 900000 ? 5 : 0;
     const motivos = [], alertas = [];
     if (dfe >= .2) motivos.push(`${Math.round(dfe * 100)}% abaixo da avaliação`);
     if (rel < .85) motivos.push(`R$ ${Math.round(m2).toLocaleString("pt-BR")}/m² (referência R$ ${Math.round(ref).toLocaleString("pt-BR")}/m²)`);
@@ -214,7 +218,7 @@ const coracao = on => `<svg width="19" height="19" viewBox="0 0 24 24" fill="${o
 function card(l) {
   const urg = l._enc - Date.now() < 48 * 36e5;
   const t = S.top && S.top.get(l.id);
-  const desc = Math.round(Number(l.desconto) || 0);
+  const desc = l._desc || 0;
   return `<button class="card vidro" data-id="${esc(l.id)}">
     ${foto(l)}
     <div class="info">
@@ -225,7 +229,7 @@ function card(l) {
         ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}
         <div class="loc">${esc([l.bairro && !l.titulo.includes(l.bairro) ? l.bairro : "", l.cidade && (l.cidade + (l.uf ? " · " + l.uf : ""))].filter(Boolean).join(" · ") || l.tipo)}</div>
       </div>
-      <div class="baixo"><span class="preco">${fmtBRL(l.valor)}</span><span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
+      <div class="baixo"><span class="preco">${l._lance ? `<small class="lance-tag">lance atual</small>` : ""}${fmtBRL(l._preco)}${l._lance ? `<small class="min-praca">lance mínimo ${fmtBRL(l.valor)}</small>` : ""}</span><span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
     </div>
     ${desc > 0 ? `<span class="desc">-${desc}%</span>` : ""}
     ${S.organizando && S.aba === "favoritos" ? `<span class="alca-arrastar" data-arrastar="${esc(l.id)}" role="button" aria-label="Segure e arraste para mudar a ordem" title="Arraste para mudar a ordem">${ALCA}</span>`
@@ -460,7 +464,7 @@ function blocoItbi(l) {
   const quando = per.length === 2 ? `${mesAno(per[0])} a ${mesAno(per[1])}` : "últimos 18 meses";
   const onde = v.nivel === "rua" ? `na ${esc(v.local || "mesma rua")}` : `no bairro ${esc(v.local || "")}`;
   const a = Number(l.area_constr) || 0;
-  const meuM2 = a > 0 && l.valor > 0 ? l.valor / a : null;
+  const meuM2 = a > 0 && l._preco > 0 ? l._preco / a : null;
   let comp = "";
   if (meuM2 && (!Estimativa._serve(l) || meuM2 / v.m2 < .2)) {
     comp = `<div class="texto-ajuda" style="margin-top:8px">Lance de ${r$(meuM2)}/m², baixo demais para comparar: confira a área no edital e se o lote é o imóvel inteiro.</div>`;
@@ -494,7 +498,11 @@ function abrirLote(id) {
     <div class="det-end">${esc([l.endereco, l.bairro && !(l.endereco || "").includes(l.bairro) ? l.bairro : "", l.cidade && `${l.cidade}/${l.uf}`].filter(Boolean).join(" · "))}</div>
     ${linkMaps(l) ? `<a class="btn-maps vidro" href="${esc(linkMaps(l))}" target="_blank" rel="noopener noreferrer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Ver no Google Maps</a>` : ""}
     <div class="caixa vidro">
-      <div class="r"><div><div class="rot">${esc(pracaCurta(l.praca_atual))} · lance mínimo</div><div class="valor-grande">${fmtBRL(l.valor)}</div></div>${desc > 0 ? `<span class="pill">-${desc}% da 1ª praça</span>` : ""}</div>
+      ${l._lance ? `<div class="r"><div><div class="rot">Lance atual · ${l.lances} lance${l.lances > 1 ? "s" : ""}${l.lance_quando ? " · visto às " + esc(new Date(l.lance_quando).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"})) : ""}</div><div class="valor-grande">${fmtBRL(l._lance)}</div></div>${l._desc > 0 ? `<span class="pill">-${l._desc}% da 1ª praça</span>` : ""}</div>
+      ${l.lance_inc ? `<div class="rot" style="margin-top:4px">Próximo lance a partir de <b>${fmtBRL(l._lance + l.lance_inc)}</b> (incremento ${fmtBRL(l.lance_inc)})</div>` : ""}
+      <div class="r lance-min"><span class="rot">${esc(pracaCurta(l.praca_atual))} · lance mínimo</span><span>${fmtBRL(l.valor)}${desc > 0 ? ` <small>(-${desc}% da 1ª)</small>` : ""}</span></div>`
+      : `<div class="r"><div><div class="rot">${esc(pracaCurta(l.praca_atual))} · lance mínimo</div><div class="valor-grande">${fmtBRL(l.valor)}</div></div>${desc > 0 ? `<span class="pill">-${desc}% da 1ª praça</span>` : ""}</div>
+      ${(l.lances || 0) > 0 ? `<div class="rot" style="margin-top:4px">${l.lances} lance${l.lances > 1 ? "s" : ""} já dado${l.lances > 1 ? "s" : ""}: confira o valor no site oficial</div>` : ""}`}
       <div class="sep"></div>
       <div class="r rot"><span>${l.encerra ? "Leilão " + esc(fmtData(l.encerra)) : ""}</span><span style="color:var(--acc2);font-weight:600">${esc(falta(l.encerra))}</span></div>
     </div>
@@ -527,7 +535,7 @@ function abrirCalc(l, daPericia) {
   $("#calc-tit").innerHTML = `<b>${esc(l.titulo)}</b><br>Valores iniciais estimados a partir do anúncio. Ajuste com o que estiver no edital.`;
   const salvo = CONTA.calculos.get(l.id);
   const aval = l.referencia && l.referencia > l.valor ? l.referencia : null;
-  const dados = {lance: l.valor, mercado: !aval && l._est ? l._est.meio : null, avaliacao: aval, area: l.area_constr || (soTerreno ? null : l.area), cidade: l.cidade, tipo: l.tipo,
+  const dados = {lance: l._lance ? l._lance + (l.lance_inc || 0) : l.valor, mercado: !aval && l._est ? l._est.meio : null, avaliacao: aval, area: l.area_constr || (soTerreno ? null : l.area), cidade: l.cidade, tipo: l.tipo,
     ocupado: !/desocup/i.test(l.ocupacao || ""), fixos: Object.assign({}, salvo || {}, daPericia || {})};
   Calc.render($("#calc-corpo"), dados);
   const fonte = $("#calc-fonte");
