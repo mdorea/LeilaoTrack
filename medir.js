@@ -1,10 +1,12 @@
-const E = require("./site/novo/js/estimativa.js");
 const L = require("/tmp/l.json");
-E.calcular(L);
-const A = L.filter(l => !l.encerrado && l.ativo !== false);
-const ok = A.filter(l => l._est && !l._est.fora), fora = A.filter(l => l._est && l._est.fora);
-const out = [`ativos=${A.length} com_estimativa=${ok.length} fora=${fora.length}`];
-const c = {}; ok.forEach(l => c[l._est.conf] = (c[l._est.conf]||0)+1); out.push("conf="+JSON.stringify(c));
-const ds = ok.map(l=>l._est.desc).sort((a,b)=>b-a); out.push("top desc="+ds.slice(0,10).join(",")+" p50="+ds[Math.floor(ds.length/2)]);
-ok.sort((a,b)=>b._est.desc-a._est.desc).slice(0,5).forEach(l=>out.push(`top ${l.site} ${l.tipo} ${l.cidade}/${l.uf} area=${l.area} lance=${l.valor} ref=${l.referencia} est=${l._est.min}-${l._est.max} ${l._est.conf} | ${String(l.titulo).slice(0,60)}`));
-console.log(out.join("\n")); out.forEach(x=>console.log("::notice title=est::"+x));
+const out = [];
+const keys = {}; L.forEach(l => Object.keys(l).forEach(k => keys[k] = (keys[k]||0)+1)); out.push("chaves="+JSON.stringify(keys));
+for (const s of ["Mega","Frazão","Zuk","Biasi"]) {
+  const ls = L.filter(l => l.site===s && ["Casa","Apartamento"].includes(l.tipo));
+  const kw = re => ls.filter(l => re.test((l.titulo||"")+" "+(l.area_txt||"")+" "+(l.descricao||""))).length;
+  out.push(`${s} n=${ls.length} construida=${kw(/constru/i)} privativa=${kw(/privativ/i)} util=${kw(/[úu]til/i)} terreno=${kw(/terreno/i)} total=${kw(/total/i)}`);
+  ls.filter(l=>l.tipo==="Casa").slice(0,5).forEach(l => out.push(`  ${s} CASA tit="${String(l.titulo).slice(0,90)}" area=${l.area} txt="${String(l.area_txt).slice(0,60)}"`));
+  ls.filter(l=>l.tipo==="Apartamento").slice(0,2).forEach(l => out.push(`  ${s} APTO tit="${String(l.titulo).slice(0,90)}" area=${l.area} txt="${String(l.area_txt).slice(0,60)}"`));
+}
+const encerr = L.filter(l=>l.encerrado||l.ativo===false).length; out.push(`total=${L.length} encerrados/inativos=${encerr}`);
+console.log(out.join("\n")); out.forEach(x=>console.log("::notice title=est::"+x.replace(/\n/g," ")));
