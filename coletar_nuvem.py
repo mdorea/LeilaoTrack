@@ -292,6 +292,37 @@ def atualizar_lances(http, site, lidos, anteriores):
         log(f"{site}: lance atual lido em {feitos} lotes")
 
 
+# ---- endereço exato (Mega): a lista só traz bairro/cidade; a página do lote tem o mapa com a rua e o número ----
+ENDERECOS_POR_LEITURA = 120
+
+
+def atualizar_enderecos(http, site, lidos, anteriores):
+    feitos = 0
+    for l in lidos:
+        v = anteriores.get(l["id"]) or {}
+        if v.get("end_maps") or v.get("end_lido"):
+            for k in ("end_maps", "end_lido"):
+                if v.get(k):
+                    l[k] = v[k]
+            continue
+        if feitos >= ENDERECOS_POR_LEITURA or l.get("tipo") == "Veículo":
+            continue
+        try:
+            end = coletores.mega_endereco(http.get(l["url"]))
+            feitos += 1
+        except coletores.Bloqueado as e:
+            log(f"{site}: parei de ler endereços ({e})")
+            break
+        except Exception as e:
+            log(f"{site}: não li o endereço de {l['id']} ({e})")
+            continue
+        if end:
+            l["end_maps"] = end
+        l["end_lido"] = AGORA_S[:10]
+    if feitos:
+        log(f"{site}: endereço exato lido em {feitos} lotes")
+
+
 def brl(v):
     return "—" if v is None else "R$ " + f"{v:,.0f}".replace(",", ".")
 
@@ -367,6 +398,8 @@ def main():
             lidos = [l for l in lidos if l.get("tipo") not in excluir]
             if site in ("Mega", "Frazão", "Biasi"):
                 atualizar_lances(http, site, lidos, lotes)
+            if site == "Mega":
+                atualizar_enderecos(http, site, lidos, lotes)
             primeira_vez = not any(l["site"] == site for l in lotes.values())
             ids = set()
             n_novos = 0

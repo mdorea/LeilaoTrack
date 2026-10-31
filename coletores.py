@@ -434,14 +434,39 @@ def frazao_parse(html):
 FRAZAO_DETALHES_POR_LEITURA = 120
 
 
+_RUIDO_END = re.compile(r"\b(apto|apt|apartamento|torre|bloco|bl|unidade|unid|condom[íi]nio|cond|edif[íi]cio|ed|loteamento|lote|quadra|sala|andar|casa\s*\d|conjunto|garagem|vaga)\b", re.I)
+
+
+def endereco_maps(txt):
+    """Endereço limpo para o Google Maps: rua, número, bairro, cidade/UF e CEP (sem apto, torre, condomínio)."""
+    txt = re.sub(r"\s+", " ", str(txt or "")).strip(" ,.-")
+    partes = [p.strip() for p in txt.split(",") if p.strip()]
+    ok = []
+    for i, p in enumerate(partes):
+        if i >= 2 and _RUIDO_END.search(p):
+            continue
+        p = re.sub(r"\b(n[º°o]\.?)\s*(?=\d)", "", p, flags=re.I).strip()
+        if p:
+            ok.append(p)
+    return ", ".join(ok)[:250]
+
+
 def frazao_detalhe(html):
     """Áreas da página do lote: 'Área(s): 177,02 m² de área de terreno, 190,26 m² de área construída'."""
     t = texto(html)
     corte = re.search(r"(Lotes? relacionados|Veja tamb[ée]m|Outros lotes)", t, re.I)
     if corte:
         t = t[:corte.start()]
-    d = {"v": 2}
+    d = {"v": 3}
     d.update(areas_de(t))
+    # endereço exato: "Endereço Completo RUA X, 10, BAIRRO, Cidade, UF, CEP Características..." ou "Endereço: Av. Y, nº 720 - Bairro, Cidade/UF - CEP: 11740-000"
+    m = re.search(r"Endere[çc]o Completo\s+(.+?)\s+Caracter[íi]sticas do Im[óo]vel", t)
+    if m:
+        d["end_maps"] = endereco_maps(m.group(1))
+    else:
+        m = re.search(r"Endere[çc]o:\s*(.{8,200}?CEP:?\s*\d{5}-?\d{3})", t)
+        if m:
+            d["end_maps"] = re.sub(r"CEP:?\s*", "", re.sub(r"\s+-\s+", ", ", endereco_maps(m.group(1).replace("/", ", "))))
     return d
 
 
@@ -478,7 +503,7 @@ def coletar_frazao(http, log, anteriores=None, limite=4000, completo=True):
     feitos = 0
     for l in vistos.values():
         det = (anteriores.get(l["id"]) or {}).get("_det")
-        if (not det or det.get("v") != 2) and feitos < FRAZAO_DETALHES_POR_LEITURA and l.get("tipo") in ("Casa", "Apartamento"):
+        if (not det or det.get("v") != 3) and feitos < FRAZAO_DETALHES_POR_LEITURA and l.get("tipo") != "Veículo":
             try:
                 det = frazao_detalhe(http.get(l["url"], {"Referer": FRAZAO + "/"}))
                 feitos += 1
@@ -486,7 +511,7 @@ def coletar_frazao(http, log, anteriores=None, limite=4000, completo=True):
                 log(f"Frazão: falha no lote {l['id']}: {e}")
         if det:
             l["_det"] = det
-            for k in ("area_constr", "area_terreno"):
+            for k in ("area_constr", "area_terreno", "end_maps"):
                 if det.get(k):
                     l[k] = det[k]
     log(f"Frazão: {len(vistos)} lotes, {feitos} páginas de detalhe")
@@ -546,6 +571,14 @@ def mega_parse(html):
             **ar_mega,
         }))
     return lotes
+
+
+def mega_endereco(html):
+    """Endereço exato do mapa da página do lote (o mesmo que a Mega mostra no Google Maps)."""
+    m = re.search(r'maps/embed/v1/place\?[^"]*?[?&;]q=([^"&]+)', html)
+    if not m:
+        return ""
+    return re.sub(r"\s+", " ", urllib.parse.unquote_plus(_html.unescape(m.group(1)))).strip()[:250]
 
 
 def coletar_mega(http, log, limite=4000, categorias=("imoveis",), completo=True):

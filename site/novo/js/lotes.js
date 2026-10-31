@@ -416,6 +416,7 @@ $("#corpo-ordem").addEventListener("click", e => { const b = e.target.closest("[
 /* ---------------- ficha do lote ---------------- */
 // endereço para o Google Maps: só texto do anúncio, sem dados pessoais; abre a busca do próprio Google
 function linkMaps(l) {
+  if (l.end_maps) return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(String(l.end_maps).slice(0, 250));
   const partes = [l.endereco, l.bairro && !(l.endereco || "").includes(l.bairro) ? l.bairro : "", l.cidade && !(l.endereco || "").includes(l.cidade) ? l.cidade : "", l.uf]
     .map(x => String(x || "").replace(/\s+/g, " ").trim()).filter(Boolean);
   if (!l.cidade && !l.endereco) return "";
