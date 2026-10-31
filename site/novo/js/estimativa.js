@@ -1,5 +1,6 @@
 /* LeilãoTrack · valor de mercado estimado (faixa), a partir dos próprios lotes.
-   Referência de cada lote = valor da 1ª praça (perto da avaliação) dividido pela área.
+   Referência de cada lote = valor da 1ª praça (perto da avaliação) dividido pela ÁREA CONSTRUÍDA
+   (nunca a do terreno). Comparáveis: lotes ativos + histórico dos últimos 12 meses.
    Compara com casas/apartamentos parecidos no mesmo bairro ou, se faltar, na mesma cidade.
    Calibrado em 31/10/2026 com 1.683 lotes ativos.
    O próprio lote nunca entra na conta dele. É uma referência, não um laudo. */
@@ -20,25 +21,32 @@ const Estimativa = (() => {
     const ord = [...vals].sort((a, b) => a - b), med = quantil(ord, .5);
     return ord.filter(v => v >= med / 2.5 && v <= med * 2.5);
   }
+  const areaDe = l => Number(l.area_constr) || 0;
   function serve(l) {
-    return l && TIPOS.has(l.tipo) && l.area >= AREA_MIN && l.area <= AREA_MAX && l.cidade && l.uf
+    const a = areaDe(l);
+    return l && TIPOS.has(l.tipo) && a >= AREA_MIN && a <= AREA_MAX && l.cidade && l.uf
       && !RUIM.test(l.titulo || "") && !/terreno de/i.test(l.titulo || "");
   }
   function m2Ref(l) {
     const r = Number(l.referencia) || 0;
-    if (!(r > 0) || !(l.area > 0)) return null;
-    const m = r / l.area;
+    const a = areaDe(l);
+    if (!(r > 0) || !(a > 0)) return null;
+    const m = r / a;
     return m >= M2_MIN && m <= M2_MAX ? m : null;
   }
   const arred = v => v >= 1e6 ? Math.round(v / 1e4) * 1e4 : Math.round(v / 1e3) * 1e3;
 
   // grupos: bairro+tipo e cidade+tipo; cada item guarda o id para não contar o próprio lote
-  function calcular(lotes) {
+  function calcular(lotes, historico) {
     const bairro = new Map(), cidade = new Map();
+    const atuais = new Set(lotes.map(l => l.id));
+    // histórico compacto {i,t,c,u,b,a,r,d}: lotes que já saíram do site (até 12 meses)
+    const antigos = (Array.isArray(historico) ? historico : []).filter(r => r && typeof r.i === "string" && !atuais.has(r.i))
+      .map(r => ({id: r.i, tipo: r.t, cidade: r.c, uf: r.u, bairro: r.b, area_constr: r.a, referencia: r.r, titulo: ""}));
     const push = (m, k, it) => { if (!m.has(k)) m.set(k, []); m.get(k).push(it); };
     const kc = l => sem(l.cidade) + "|" + l.uf + "|" + l.tipo;
     const kb = l => l.bairro ? kc(l) + "|" + sem(l.bairro) : null;
-    for (const l of lotes) {
+    for (const l of lotes.concat(antigos)) {
       if (!serve(l)) continue;
       const m = m2Ref(l); if (m == null) continue;
       const it = {id: l.id, m};
@@ -63,7 +71,7 @@ const Estimativa = (() => {
       const med = quantil(ok, .5);
       // largura = metade central dos erros medidos (a avaliação real ficou dentro em ~50% dos casos)
       const [fLo, fHi] = conf === "média" ? [.85, 1.18] : [.70, 1.45];
-      const min = arred(med * fLo * l.area), max = arred(med * fHi * l.area), meio = arred(med * l.area);
+      const a = areaDe(l), min = arred(med * fLo * a), max = arred(med * fHi * a), meio = arred(med * a);
       if (!(min > 0) || !(max > min)) continue;
       // se a avaliação do próprio lote foge muito dos parecidos, a área ou o anúncio
       // provavelmente está errado (terreno x construída, parte ideal...): não estima
@@ -72,7 +80,7 @@ const Estimativa = (() => {
       if (l.valor > 0 && l.valor / meio < .2) { l._est = {fora: true}; continue; }
       const desc = l.valor > 0 ? Math.round((1 - l.valor / meio) * 100) : null;
       l._est = {min, max, meio, m2: Math.round(med), conf, nivel, n: ok.length, desc,
-        local: nivel === "bairro" ? l.bairro : l.cidade};
+        local: nivel === "bairro" ? l.bairro : l.cidade, area: a};
       n++;
     }
     return n;

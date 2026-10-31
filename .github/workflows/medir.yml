@@ -17,4 +17,4 @@ jobs:
       - env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python medir.py && python medir2.py
+        run: python medir.py && node medir.js

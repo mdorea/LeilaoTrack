@@ -120,6 +120,56 @@ def area_m2(s):
     return round(v, 2), m.group(0)
 
 
+# ---- área construída x área do terreno (o que mais distorce o preço por m²) ----
+_NUM = r"(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?)"
+_M2 = r"\s*m(?:²|2)"
+_AREAS = {
+    "constr": [r"[áa]rea\s+(?:total\s+)?constru[íi]da(?:\s+total)?(?:\s+conforme\s+matr[íi]cula)?\s*(?:de|:|com|é\s+de)?\s*" + _NUM + _M2,
+               r"\bconstru[íi]da\s+(?:conforme\s+matr[íi]cula\s+)?de\s+" + _NUM + _M2,
+               r"metragem\s+constru[íi]da\s*:?\s*" + _NUM + _M2,
+               _NUM + _M2 + r"\s*(?:de\s+)?(?:[áa]rea\s+)?(?:total\s+)?constru[íi]da",
+               r"edificad[ao][^.;]{0,90}?\bcom\s+(?:a\s+)?(?:[áa]rea\s+(?:constru[íi]da\s+)?(?:de\s+)?)?" + _NUM + _M2],
+    "priv": [r"[áa]rea\s+(?:privativa|[úu]til)(?:\s+total)?\s*(?:de|:|com|é\s+de)?\s*" + _NUM + _M2,
+             r"metragem\s+[úu]til\s*:?\s*" + _NUM + _M2,
+             _NUM + _M2 + r"\s*(?:de\s+)?(?:[áa]rea\s+)?(?:privativa|[úu]til)\b"],
+    "terreno": [r"[áa]rea\s+(?:de\s+|do\s+)?terreno\s*(?:de|:|com|é\s+de)?\s*" + _NUM + _M2,
+                r"metragem\s+(?:do\s+)?terreno\s*:?\s*" + _NUM + _M2,
+                _NUM + _M2 + r"\s*(?:de\s+)?(?:[áa]rea\s+(?:de\s+|do\s+)?)?terreno",
+                r"\bterreno\s+(?:urbano\s+)?(?:com|de|medindo)\s+(?:a\s+)?(?:[áa]rea\s+(?:total\s+)?(?:de\s+)?)?" + _NUM + _M2],
+}
+
+
+def _num_br(s):
+    try:
+        return round(float(s.replace(".", "").replace(",", ".")), 2)
+    except ValueError:
+        return None
+
+
+def areas_de(t):
+    """{'constr': m², 'terreno': m²} lidos de um texto. A privativa/útil conta como construída
+    (é a área de uso do imóvel). Pega a primeira menção de cada uma."""
+    t = t or ""
+    achou = {}
+    for k, pads in _AREAS.items():
+        melhor = None
+        for pad in pads:
+            m = re.search(pad, t, re.I)
+            if m and (melhor is None or m.start() < melhor[0]):
+                v = _num_br(m.group(1))
+                if v and 8 <= v <= 500000:
+                    melhor = (m.start(), v)
+        if melhor:
+            achou[k] = melhor[1]
+    r = {}
+    c = achou.get("priv") or achou.get("constr")
+    if c and c <= 20000:
+        r["area_constr"] = c
+    if achou.get("terreno"):
+        r["area_terreno"] = achou["terreno"]
+    return r
+
+
 TIPOS = [
     ("Veículo", r"ve[ií]culo|carro|moto\b|caminh[aã]o|[ôo]nibus|autom[oó]vel"),
     ("Rural", r"rural|rurais|fazenda|s[ií]tio|ch[áa]cara|gleba|\bha\b"),
@@ -219,6 +269,7 @@ def zuk_parse(html):
             if area:
                 area_txt = i
                 break
+        ar_zuk = areas_de(" ; ".join(infos))
         pracas = []
         for seg in b.split("card-property-price-label")[1:]:
             nome = texto(seg.split("</span>")[0].lstrip('">'))
@@ -237,6 +288,7 @@ def zuk_parse(html):
             "pracas": pracas, "ocupacao": ocup, "comitente": comit,
             "status": "", "lances": None, "visitas": None,
             "parceiro": 'data-parceiro="0"' not in b[:80],
+            **ar_zuk,
         }))
     return lotes
 
@@ -365,11 +417,27 @@ def frazao_parse(html):
             "comitente": comit, "status": (st.group(1).strip().capitalize() if st else ""),
             "visitas": int(nums[0]) if len(nums) > 0 else None,
             "lances": int(nums[1]) if len(nums) > 1 else None,
+            **({"area_terreno": area} if area and re.search(r"casa|sobrado|terreno|lote|rural|ch[áa]cara|s[íi]tio", (tipo_site or "") + " " + tit, re.I) else {}),
         }))
     return lotes
 
 
-def coletar_frazao(http, log, limite=4000, completo=True):
+FRAZAO_DETALHES_POR_LEITURA = 120
+
+
+def frazao_detalhe(html):
+    """Áreas da página do lote: 'Área(s): 177,02 m² de área de terreno, 190,26 m² de área construída'."""
+    t = texto(html)
+    corte = re.search(r"(Lotes? relacionados|Veja tamb[ée]m|Outros lotes)", t, re.I)
+    if corte:
+        t = t[:corte.start()]
+    d = {"v": 2}
+    d.update(areas_de(t))
+    return d
+
+
+def coletar_frazao(http, log, anteriores=None, limite=4000, completo=True):
+    anteriores = anteriores or {}
     ids = []
     for pag in ("/Home/Calendario", "/"):
         try:
@@ -397,6 +465,22 @@ def coletar_frazao(http, log, limite=4000, completo=True):
                     novos += 1
             if len(ls) < 36 or not novos or len(vistos) >= limite:
                 break
+    # página de cada lote (só uma vez; fica guardada em _det) para separar área construída x terreno
+    feitos = 0
+    for l in vistos.values():
+        det = (anteriores.get(l["id"]) or {}).get("_det")
+        if (not det or det.get("v") != 2) and feitos < FRAZAO_DETALHES_POR_LEITURA and l.get("tipo") in ("Casa", "Apartamento"):
+            try:
+                det = frazao_detalhe(http.get(l["url"], {"Referer": FRAZAO + "/"}))
+                feitos += 1
+            except Exception as e:
+                log(f"Frazão: falha no lote {l['id']}: {e}")
+        if det:
+            l["_det"] = det
+            for k in ("area_constr", "area_terreno"):
+                if det.get(k):
+                    l[k] = det[k]
+    log(f"Frazão: {len(vistos)} lotes, {feitos} páginas de detalhe")
     return list(vistos.values()), bool(ids)
 
 
@@ -434,6 +518,12 @@ def mega_parse(html):
         ps = [p.strip() for p in tit.split(" - ")]
         bairro = ps[1] if len(ps) >= 4 else ""
         area, area_txt = area_m2(tit)
+        ar_mega = {}
+        mt = re.search(r"terreno\s+(?:de\s+)?" + _NUM + _M2, tit, re.I)
+        if mt:
+            ar_mega["area_terreno"] = _num_br(mt.group(1))
+        if area and not (mt and tit.lower().find(area_txt.lower()) >= mt.start()):
+            ar_mega["area_constr"] = area
         lotes.append(finalizar({
             "id": f"mega:{cod or partes[-1]}", "site": "Mega", "url": url, "codigo": cod,
             "titulo": tit, "endereco": "", "bairro": bairro, "cidade": cidade, "uf": uf,
@@ -444,6 +534,7 @@ def mega_parse(html):
             "visitas": int(nums[0]) if len(nums) > 0 else None,
             "lances": int(nums[1]) if len(nums) > 1 else None,
             "desconto": int(desc.group(1)) if desc else 0,
+            **ar_mega,
         }))
     return lotes
 
@@ -548,7 +639,7 @@ def biasi_parse(html):
 def biasi_detalhe(html):
     """Datas das praças, endereço, área, ocupação e tipo, da página do lote."""
     t = texto(html)
-    d = {"datas": {}}
+    d = {"datas": {}, "v": 2}
     for mm in re.finditer(r"(\d)º Leil[ãa]o dia (\d{2}/\d{2}/\d{4}\s*às\s*\d{1,2}h\d{2})", t):
         d["datas"][mm.group(1)] = data_iso(mm.group(2))
     mm = re.search(r"\bData:\s*(\d{2}/\d{2}/\d{4}\s*às\s*\d{1,2}h\d{2})", t)
@@ -578,6 +669,9 @@ def biasi_detalhe(html):
             a, txt = area_m2(ma.group(1)) if ma else (None, "")
         if a:
             d["area"], d["area_txt"] = a, txt
+    rotulos = " ; ".join(f"Área {texto(a)} {texto(b)}" for a, b in re.findall(r"<strong>[ÁA]rea ([^<:]*):?\s*</strong>\s*<span>([^<]*)<", html))
+    desc_t = re.search(r"<strong>Descri[çc][ãa]o:\s*</strong>\s*<span>(.*?)</span>", html, re.S)
+    d.update(areas_de(rotulos + " ; " + (texto(desc_t.group(1)) if desc_t else "")))
     vi = re.search(r"Visitas\s*-\s*([\d\.]+)", t)
     if vi:
         d["visitas"] = int(vi.group(1).replace(".", ""))
@@ -592,7 +686,7 @@ def _biasi_aplicar(l, d):
     for i, p in enumerate(l["pracas"]):
         n = p["nome"][0] if p["nome"][0].isdigit() else "0"
         p["data"] = datas.get(n) or (datas.get("0") if len(l["pracas"]) == 1 else None) or datas.get(str(i + 1))
-    for k in ("endereco", "ocupacao", "tipo_site", "area", "area_txt", "visitas", "valor_alvo"):
+    for k in ("endereco", "ocupacao", "tipo_site", "area", "area_txt", "visitas", "valor_alvo", "area_constr", "area_terreno"):
         if d.get(k):
             l[k] = d[k]
     if d.get("tipo_site"):
@@ -640,7 +734,7 @@ def coletar_biasi(http, log, anteriores=None, limite=4000, completo=True):
         ant = anteriores.get(l["id"]) or {}
         det = ant.get("_det")
         datas_ant = [p.get("data") for p in ant.get("pracas", []) if p.get("data")]
-        precisa = not det or len(ant.get("pracas", [])) != len(l["pracas"]) or (datas_ant and max(datas_ant) < agora)
+        precisa = not det or det.get("v") != 2 or len(ant.get("pracas", [])) != len(l["pracas"]) or (datas_ant and max(datas_ant) < agora)
         if precisa and feitos < BIASI_DETALHES_POR_LEITURA:
             try:
                 det = biasi_detalhe(http.get(l["url"], {"Referer": BIASI + "/"}))
