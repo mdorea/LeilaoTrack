@@ -25,5 +25,5 @@ val("bairro≥3", l => C(l)+"|"+sem(l.bairro), 3);
 val("bairro≥5", l => C(l)+"|"+sem(l.bairro), 5);
 val("cidade≥5", C, 5);
 val("cidade≥15", C, 15);
-for (const t of ["Casa","Apartamento"]) val(`${t} cidade≥5`, l => l.tipo===t ? C(l) : "x"+Math.random(), 5);
+for (const t of ["Casa","Apartamento"]) val(`${t} cidade≥5`, l => l.tipo===t ? C(l) : "x"+l.id, 5);
 console.log(out.join("\n")); const T=out.join(" ¦ "); for(let i=0;i<T.length;i+=3500) console.log("::notice title=est::"+T.slice(i,i+3500));
