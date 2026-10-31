@@ -442,3 +442,5 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .card.movido{outline:2px solid var(--acc);outline-offset:2px;transition:outline .3s}
 .grade.organizando .card .info{padding-right:46px}
 .mapa{background:#EDEAF4}
+.mapa-nota{background:rgba(255,255,255,.93);color:#4E4A68;box-shadow:0 4px 14px rgba(40,30,80,.18)}
+.mapa-nota b{color:#1E1640}
