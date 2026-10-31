@@ -34,7 +34,12 @@
       <div class="data" id="data"></div>
       <h1 class="saudacao" id="saudacao">Olá</h1>
     </div>
-    <div class="astro" id="astro" aria-hidden="true"></div>
+    <button class="astro" id="astro" aria-haspopup="menu" aria-expanded="false" aria-label="Escolher tema"></button>
+    <div class="menu-tema" id="menu-tema" role="menu" hidden>
+      <button role="menuitemradio" data-tema-op="auto"><span class="ic-tema">A</span><span><b>Automático</b><small>claro de dia, escuro à noite</small></span><i class="ok-tema" aria-hidden="true">✓</i></button>
+      <button role="menuitemradio" data-tema-op="claro"><span class="ic-tema">☀</span><span><b>Claro</b></span><i class="ok-tema" aria-hidden="true">✓</i></button>
+      <button role="menuitemradio" data-tema-op="escuro"><span class="ic-tema">☾</span><span><b>Escuro</b></span><i class="ok-tema" aria-hidden="true">✓</i></button>
+    </div>
   </header>
 
   <section id="aba-inicio">

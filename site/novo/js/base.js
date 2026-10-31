@@ -64,6 +64,22 @@ function esconderCarregando(rapido) {
 function esqueletos(n) { return Array.from({length: n}, () => `<div class="esqueleto vidro"><div class="f"></div><div class="ls"><div class="l" style="width:40%"></div><div class="l" style="width:90%"></div><div class="l" style="width:60%"></div><div class="l" style="width:35%;height:15px;margin-top:4px"></div></div></div>`).join(""); }
 
 /* ---------- tema e saudação ---------- */
+function escolherTema(v) {
+  if (!["auto", "claro", "escuro"].includes(v)) return;
+  TEMA = v; LS.set("tema", TEMA);
+  aplicarTema(typeof CONTA !== "undefined" && CONTA.perfil ? CONTA.perfil.nome : undefined);
+  document.dispatchEvent(new CustomEvent("tema-mudou"));
+}
+function menuTema(abrirMenu) {
+  const m = $("#menu-tema"); m.hidden = !abrirMenu; $("#astro").setAttribute("aria-expanded", String(abrirMenu));
+}
+document.addEventListener("click", e => {
+  if (e.target.closest("#astro")) { menuTema($("#menu-tema").hidden); return; }
+  const op = e.target.closest("[data-tema-op]");
+  if (op) { escolherTema(op.dataset.temaOp); menuTema(false); toast({auto: "Tema automático: claro de dia, escuro à noite", claro: "Tema claro", escuro: "Tema escuro"}[op.dataset.temaOp]); return; }
+  if (!e.target.closest("#menu-tema")) menuTema(false);
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") menuTema(false); });
 let TEMA = LS.get("tema", "auto");
 function aplicarTema(nome) {
   const h = new Date().getHours(); const dia = h >= 6 && h < 18;
@@ -75,9 +91,12 @@ function aplicarTema(nome) {
   $("#saudacao").textContent = nome ? `${s}, ${nome}` : s;
   const d = new Date().toLocaleDateString("pt-BR", {weekday: "long", day: "numeric", month: "long"});
   $("#data").textContent = d.charAt(0).toUpperCase() + d.slice(1);
-  $("#astro").innerHTML = dia
+  // o desenho mostra o tema em uso (sol = claro, lua = escuro); "A" quando está no automático
+  $("#astro").setAttribute("aria-label", "Tema: " + {auto: "automático", claro: "claro", escuro: "escuro"}[TEMA] + ". Toque para mudar");
+  $$("#menu-tema [data-tema-op]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.temaOp === TEMA)));
+  $("#astro").innerHTML = (TEMA === "auto" ? '<span class="tema-auto">A</span>' : "") + (t === "claro"
     ? '<svg viewBox="0 0 48 48"><g stroke="#F2A93B" stroke-width="2.6" stroke-linecap="round">' + [0, 45, 90, 135, 180, 225, 270, 315].map(a => { const r = a * Math.PI / 180; return `<line x1="${24 + Math.cos(r) * 15}" y1="${24 + Math.sin(r) * 15}" x2="${24 + Math.cos(r) * 20}" y2="${24 + Math.sin(r) * 20}"/>`; }).join("") + '</g><circle cx="24" cy="24" r="10.5" fill="#F7B733"/></svg>'
-    : '<svg viewBox="0 0 48 48"><circle cx="22" cy="25" r="13" fill="#F4D58D"/><circle cx="29" cy="20" r="12" fill="var(--bg1)"/><circle cx="38" cy="10" r="1.3" fill="#C9D3EE"/><circle cx="42" cy="24" r="1" fill="#C9D3EE"/><circle cx="10" cy="8" r="1.1" fill="#C9D3EE"/></svg>';
+    : '<svg viewBox="0 0 48 48"><circle cx="22" cy="25" r="13" fill="#F4D58D"/><circle cx="29" cy="20" r="12" fill="var(--bg1)"/><circle cx="38" cy="10" r="1.3" fill="#C9D3EE"/><circle cx="42" cy="24" r="1" fill="#C9D3EE"/><circle cx="10" cy="8" r="1.1" fill="#C9D3EE"/></svg>');
 }
 
 /* ---------- folhas (janelas que sobem de baixo) ---------- */
