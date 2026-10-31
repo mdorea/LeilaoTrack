@@ -9,4 +9,4 @@ for (const s of ["Mega","Frazão","Zuk","Biasi"]) {
   ls.filter(l=>l.tipo==="Apartamento").slice(0,2).forEach(l => out.push(`  ${s} APTO tit="${String(l.titulo).slice(0,90)}" area=${l.area} txt="${String(l.area_txt).slice(0,60)}"`));
 }
 const encerr = L.filter(l=>l.encerrado||l.ativo===false).length; out.push(`total=${L.length} encerrados/inativos=${encerr}`);
-console.log(out.join("\n")); out.forEach(x=>console.log("::notice title=est::"+x.replace(/\n/g," ")));
+console.log(out.join("\n")); const T=out.join(" ¦ "); for(let i=0;i<T.length;i+=3500) console.log("::notice title=est::"+T.slice(i,i+3500));
