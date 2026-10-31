@@ -252,6 +252,46 @@ def atualizar_itbi(lotes):
     return {"gerado": resumo.get("gerado"), "periodo": resumo.get("periodo", []), "vendas": resumo.get("vendas", 0)}
 
 
+# ---- lance atual: a lista dos sites só diz quantos lances; o valor está na página do lote ----
+LANCES_POR_LEITURA = 80
+
+
+def atualizar_lances(http, site, lidos, anteriores):
+    feitos = 0
+    for l in lidos:
+        n = l.get("lances") or 0
+        if n <= 0 or l.get("encerrado"):
+            continue
+        v = anteriores.get(l["id"]) or {}
+        mesmo = v.get("lance_atual") and v.get("lance_praca") == l.get("praca_atual")
+        if mesmo and v.get("lances") == n:
+            for k in ("lance_atual", "lance_inc", "lance_quando", "lance_praca"):
+                if v.get(k) is not None:
+                    l[k] = v[k]
+            continue
+        if feitos >= LANCES_POR_LEITURA:
+            if mesmo:  # fica com o último valor conhecido até a próxima leitura
+                for k in ("lance_atual", "lance_inc", "lance_quando", "lance_praca"):
+                    if v.get(k) is not None:
+                        l[k] = v[k]
+            continue
+        try:
+            val, inc = coletores.lance_da_pagina(http.get(l["url"]))
+            feitos += 1
+        except coletores.Bloqueado as e:  # não arrisca a leitura da lista: para por aqui
+            log(f"{site}: parei de ler lances ({e})")
+            break
+        except Exception as e:
+            log(f"{site}: não li o lance de {l['id']} ({e})")
+            continue
+        if val:
+            l.update(lance_atual=val, lance_quando=AGORA_S, lance_praca=l.get("praca_atual"))
+            if inc:
+                l["lance_inc"] = inc
+    if feitos:
+        log(f"{site}: lance atual lido em {feitos} lotes")
+
+
 def brl(v):
     return "—" if v is None else "R$ " + f"{v:,.0f}".replace(",", ".")
 
@@ -325,6 +365,8 @@ def main():
                 lidos = [l for l in lidos if l.get("tipo") != "Veículo"]
             excluir = set(CFG.get("tipos_excluidos", []))
             lidos = [l for l in lidos if l.get("tipo") not in excluir]
+            if site in ("Mega", "Frazão", "Biasi"):
+                atualizar_lances(http, site, lidos, lotes)
             primeira_vez = not any(l["site"] == site for l in lotes.values())
             ids = set()
             n_novos = 0
@@ -347,7 +389,8 @@ def main():
                 if velho.get("valor") != l.get("valor") and l.get("valor"):
                     textos.append(("valor", f"Valor {brl(velho.get('valor'))} → {brl(l.get('valor'))} ({l.get('praca_atual', '')})"))
                 if (l.get("lances") or 0) > (velho.get("lances") or 0):
-                    textos.append(("lance", f"Lances: {velho.get('lances') or 0} → {l['lances']}"))
+                    textos.append(("lance", f"Lances: {velho.get('lances') or 0} → {l['lances']}"
+                                            + (f" · último lance {brl(l['lance_atual'])}" if l.get("lance_atual") else "")))
                 if velho.get("status") != l.get("status") and l.get("status"):
                     textos.append(("status", f"Situação: {velho.get('status') or '—'} → {l['status']}"))
                 if velho.get("encerra") and l.get("encerra") and velho.get("encerra") != l.get("encerra"):

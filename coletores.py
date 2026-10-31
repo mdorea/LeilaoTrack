@@ -170,6 +170,15 @@ def areas_de(t):
     return r
 
 
+def lance_da_pagina(html):
+    """(último lance, incremento) da página do lote. Mega: 'Último Lance R$ ...';
+    Frazão: 'Maior lance atual: R$ ...'; outros: 'Lance atual'."""
+    t = texto(html)
+    m = re.search(r"(?:[úu]ltimo lance|maior lance(?: atual)?|lance atual)\s*:?\s*R\$\s*([\d\.]+(?:,\d{1,2})?)", t, re.I)
+    i = re.search(r"incremento(?: m[íi]nimo)?\s*:?\s*\+?\s*R\$\s*([\d\.]+(?:,\d{1,2})?)", t, re.I)
+    return (dinheiro("R$ " + m.group(1)) if m else None), (dinheiro("R$ " + i.group(1)) if i else None)
+
+
 TIPOS = [
     ("Veículo", r"ve[ií]culo|carro|moto\b|caminh[aã]o|[ôo]nibus|autom[oó]vel"),
     ("Rural", r"rural|rurais|fazenda|s[ií]tio|ch[áa]cara|gleba|\bha\b"),
