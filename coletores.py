@@ -551,6 +551,15 @@ def mega_parse(html):
         comit = banco.group(1).replace("leilao-", "").replace("-", " ").title() if banco else instancia
         ps = [p.strip() for p in tit.split(" - ")]
         bairro = ps[1] if len(ps) >= 4 else ""
+        # título tipo "Casa 436 m² - Senhor do Bonfim-BA - Rua Atahualpa de Menezes, 191 - Centro"
+        rua_mega = ""
+        for x in ps[1:]:
+            if re.match(r"(rua|r\.|avenida|av\.?|alameda|al\.|travessa|tv\.|estrada|rodovia|rod\.|pra[çc]a|largo|beco|via|viela)\b", x, re.I):
+                rua_mega = x
+                break
+        if rua_mega:
+            outros = [x for x in ps[1:] if x != rua_mega and not re.search(r"[-/]\s*[A-Z]{2}$", x)]
+            bairro = outros[-1] if outros else ""
         area, area_txt = area_m2(tit)
         ar_mega = {}
         mt = re.search(r"terreno\s+(?:de\s+)?" + _NUM + _M2, tit, re.I)
@@ -560,7 +569,7 @@ def mega_parse(html):
             ar_mega["area_constr"] = area
         lotes.append(finalizar({
             "id": f"mega:{cod or partes[-1]}", "site": "Mega", "url": url, "codigo": cod,
-            "titulo": tit, "endereco": "", "bairro": bairro, "cidade": cidade, "uf": uf,
+            "titulo": tit, "endereco": rua_mega, "bairro": bairro, "cidade": cidade, "uf": uf,
             "tipo": classificar(cat, tit), "tipo_site": cat,
             "imagem": img.group(1) if img else "", "area": area, "area_txt": area_txt,
             "pracas": pracas, "ocupacao": "Desocupado" if re.search(r"desocupad", tit, re.I) else "",
