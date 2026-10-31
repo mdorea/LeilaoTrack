@@ -167,7 +167,7 @@ async function entrarNoApp(senha) {
   if (senha) await IA.prepararCofre(senha).catch(() => {});
   $("#tela-acesso").hidden = true;
   $("#app").hidden = false; $("#nav").hidden = false; NO_APP = true;
-  aplicarTema(CONTA.perfil.nome);
+  aplicarTema(CONTA.perfil.nome); avisoSamsung();
   $("#grade").innerHTML = esqueletos(6);
   try { await baixarLotes(true); }
   catch (e) { S.lotes = []; toast(e.status === 404 || e.status === 400 ? "Os lotes ainda não foram publicados" : "Não consegui baixar os lotes agora"); }

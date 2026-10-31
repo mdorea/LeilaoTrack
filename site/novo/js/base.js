@@ -69,7 +69,17 @@ function escolherTema(v) {
   TEMA = v; LS.set("tema", TEMA);
   aplicarTema(typeof CONTA !== "undefined" && CONTA.perfil ? CONTA.perfil.nome : undefined);
   document.dispatchEvent(new CustomEvent("tema-mudou"));
+  avisoSamsung();
 }
+// Samsung Internet: o modo escuro dele escurece qualquer site e não segue o aviso "only light" como o Chrome
+const ehSamsung = () => /SamsungBrowser/i.test(navigator.userAgent);
+function avisoSamsung() {
+  if (!ehSamsung()) return;
+  $$(".dica-samsung").forEach(p => p.hidden = false);
+  if (document.documentElement.dataset.tema !== "claro" || LS.get("aviso_samsung")) return;
+  setTimeout(() => { const a = $("#aviso-samsung"); if (a && document.documentElement.dataset.tema === "claro") a.hidden = false; }, 1500);
+}
+document.addEventListener("click", e => { if (e.target.closest("#aviso-samsung-ok")) { LS.set("aviso_samsung", 1); $("#aviso-samsung").hidden = true; } });
 function menuTema(abrirMenu) {
   const m = $("#menu-tema"); m.hidden = !abrirMenu; $("#astro").setAttribute("aria-expanded", String(abrirMenu));
 }

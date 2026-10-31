@@ -27,7 +27,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;min-height:100%}
-body{font-family:var(--font);color:var(--tx);background:var(--bg2);overflow-x:hidden;transition:color .4s}
+body{color-scheme:inherit;font-family:var(--font);color:var(--tx);background:var(--bg2);overflow-x:hidden;transition:color .4s}
 button,input,select{font-family:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none;padding:0}
 .fundo{position:fixed;inset:0;z-index:-1;pointer-events:none;transform:translateZ(0);
@@ -485,3 +485,12 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .preco .min-praca{display:block;font-size:11px;font-weight:500;color:var(--mu);letter-spacing:0;margin-top:1px}
 .caixa .lance-min{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:14px;font-weight:600;align-items:center}
 .caixa .lance-min small{font-weight:500;color:var(--mu)}
+
+/* modo escuro forçado do navegador (Chrome/Samsung no Android): sinais de que o site tem tema próprio */
+[data-tema="claro"] body{color-scheme:only light}
+@media (prefers-color-scheme: dark){:root:not([data-tema="claro"]){color-scheme:dark}}
+.dica-samsung{margin:8px 6px 4px;font-size:12px;line-height:1.4;color:var(--mu);padding-top:8px;border-top:1px solid var(--line)}
+.aviso-samsung{position:fixed;left:16px;right:16px;bottom:96px;z-index:60;border-radius:18px;padding:14px;background:var(--sheet);box-shadow:0 10px 30px rgba(30,22,64,.25);display:flex;flex-direction:column;gap:10px;font-size:13.5px;line-height:1.4}
+.aviso-samsung[hidden]{display:none}
+.aviso-samsung p{margin:0}
+.aviso-samsung .btn-sec{height:40px}
