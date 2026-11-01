@@ -14,7 +14,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-GEO_POR_LEITURA = 150
+GEO_POR_LEITURA = 200
 UA = "LeilaoTrack/1.0 (+https://github.com/mdorea/LeilaoTrack)"
 URL = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&addressdetails=0&q="
 RAIO_MAX_KM = 45
@@ -31,6 +31,23 @@ def _km(a, b):
     return 12742 * math.asin(math.sqrt(h))
 
 
+_COORD = re.compile(r"^\s*-?\d{1,3}\.\d+\s*,\s*-?\d{1,3}\.\d+\s*$")
+
+
+def partes(l):
+    """Endereço do lote em pedaços, sem CEP e sem 'Cidade, UF' repetidos no fim."""
+    cru = l.get("end_maps") or ""
+    if not cru or _COORD.match(cru):
+        cru = l.get("endereco") or ""
+    toks = [x.strip() for x in re.sub(r"\s+", " ", cru).replace("/", ", ").split(",") if x.strip()]
+    toks = [x for x in toks if not re.fullmatch(r"\d{5}-?\d{3}", x)]
+    if toks and l.get("uf") and _sem(toks[-1]) == _sem(l["uf"]):
+        toks.pop()
+    if toks and l.get("cidade") and _sem(toks[-1]) == _sem(l["cidade"]):
+        toks.pop()
+    return toks
+
+
 def consultas(l):
     """Lista de (texto, nivel) da mais precisa para a menos precisa."""
     cid, uf, bai = l.get("cidade") or "", l.get("uf") or "", l.get("bairro") or ""
@@ -38,15 +55,18 @@ def consultas(l):
         return []
     fim = f"{cid}, {uf}"
     out = []
-    em = (l.get("end_maps") or "").strip()
-    rua = (l.get("endereco") or "").strip()
-    base = em or (", ".join(x for x in (rua, bai, fim) if x) if rua and re.search(r"\d|rua|av|alameda|estrada|rodovia|travessa", rua, re.I) else "")
-    if base:
+    toks = partes(l)
+    rua = toks[0] if toks else ""
+    tem_via = bool(re.search(r"\d|^(rua|r|av|avenida|alameda|al|travessa|tv|estrada|est|rodovia|rod|pra[çc]a|largo|via|beco|viela)\b", rua, re.I))
+    if rua and (tem_via or any(re.fullmatch(r"\d+[A-Za-z]?|s/?n", x, re.I) for x in toks[1:3])):
+        com = list(toks)
+        if bai and _sem(bai) not in _sem(" ".join(com)):
+            com.append(bai)
+        base = ", ".join(com + [fim])
         out.append((base, "rua"))
-        sem_num = re.sub(r",?\s*\d{5}-?\d{3}\b", "", base)      # tira o CEP
-        sem_num = re.sub(r",\s*\d+[A-Za-z]?\b", "", sem_num, count=1)  # tira o número
-        if sem_num != base and len(sem_num) > 8:
-            out.append((sem_num.strip(" ,"), "rua"))
+        sem_num = [x for x in com if not re.fullmatch(r"\d+[A-Za-z]?|s/?n", x, re.I)]
+        if sem_num != com and sem_num:
+            out.append((", ".join(sem_num + [fim]), "rua"))
     if bai:
         out.append((f"{bai}, {fim}", "bairro"))
     return out
@@ -60,10 +80,10 @@ def precisa(l):
     g = l.get("geo")
     tem_rua = cs[0][1] == "rua"
     if not g:
-        if l.get("geo_tent", "") >= _dias_atras(7):
+        if l.get("geo_tent", "") >= _dias_atras(7) and (not tem_rua or l.get("geo_qt") == cs[0][0]):
             return 0
         return 1 if tem_rua else 3
-    if g[2] != "rua" and tem_rua and l.get("geo_q") != cs[0][0] and l.get("geo_tent", "") < _dias_atras(7):
+    if tem_rua and l.get("geo_q") != cs[0][0] and l.get("geo_qt") != cs[0][0]:
         return 2
     return 0
 
@@ -110,6 +130,9 @@ def atualizar(lotes, municipios, log, limite=GEO_POR_LEITURA):
                 res = (p, nivel, q)
                 break
         l["geo_tent"] = hoje
+        cs0 = consultas(l)
+        if cs0 and cs0[0][1] == "rua":
+            l["geo_qt"] = cs0[0][0]
         if res:
             (la, lo), nivel, q = res
             l["geo"] = [round(la, 5), round(lo, 5), nivel]

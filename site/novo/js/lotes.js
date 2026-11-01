@@ -414,13 +414,25 @@ $("#btn-ordem").addEventListener("click", () => {
 $("#corpo-ordem").addEventListener("click", e => { const b = e.target.closest("[data-o]"); if (!b) return; S.ordem = b.dataset.o; setTimeout(() => { fechar(); render(); }, 120); b.parentNode.querySelectorAll(".opcao").forEach(o => o.classList.toggle("on", o === b)); });
 
 /* ---------------- ficha do lote ---------------- */
-// endereço para o Google Maps: só texto do anúncio, sem dados pessoais; abre a busca do próprio Google
+// endereço do lote em pedaços, sem CEP e sem "Cidade, UF" repetidos no fim (cada site escreve de um jeito)
+const _semE = x => String(x || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const _ehCoord = x => /^\s*-?\d{1,3}\.\d+\s*,\s*-?\d{1,3}\.\d+\s*$/.test(String(x || ""));
+function enderecoPartes(l) {
+  const cru = l.end_maps && !_ehCoord(l.end_maps) ? l.end_maps : (l.endereco || "");
+  const t = String(cru).replace(/\s+/g, " ").replace(/\//g, ", ").split(",").map(x => x.trim()).filter(x => x && !/^\d{5}-?\d{3}$/.test(x));
+  if (t.length && l.uf && _semE(t[t.length - 1]) === _semE(l.uf)) t.pop();
+  if (t.length && l.cidade && _semE(t[t.length - 1]) === _semE(l.cidade)) t.pop();
+  if (l.bairro && !_semE(t.join(" ")).includes(_semE(l.bairro))) t.push(l.bairro);
+  return t;
+}
+function enderecoTexto(l) {
+  return [enderecoPartes(l).join(", "), l.cidade && `${l.cidade}/${l.uf}`].filter(Boolean).join(" · ");
+}
+// link do Google Maps: só texto do anúncio, sem dados pessoais; abre a busca do próprio Google
 function linkMaps(l) {
-  if (l.end_maps) return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(String(l.end_maps).slice(0, 250));
-  const partes = [l.endereco, l.bairro && !(l.endereco || "").includes(l.bairro) ? l.bairro : "", l.cidade && !(l.endereco || "").includes(l.cidade) ? l.cidade : "", l.uf]
-    .map(x => String(x || "").replace(/\s+/g, " ").trim()).filter(Boolean);
-  if (!l.cidade && !l.endereco) return "";
-  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(partes.join(", ").slice(0, 250));
+  if (!l.cidade && !l.endereco && !l.end_maps) return "";
+  const q = [...enderecoPartes(l), l.cidade, l.uf].filter(Boolean).join(", ");
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q.slice(0, 250));
 }
 function textoArea(l) {
   const m = v => Number(v).toLocaleString("pt-BR", {maximumFractionDigits: 2}) + " m²";
@@ -496,7 +508,7 @@ function abrirLote(id) {
     <div class="det-foto" style="background:${grad(l.id)}">${src ? `<img referrerpolicy="no-referrer" src="${esc(src)}" alt="">` : `<div style="display:grid;place-items:center;height:100%">${CASA.replace("42%", "90")}</div>`}</div>
     <div class="det-site"><i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i><span style="color:${SITE_COR[l.site] || "inherit"}">${esc(SITE_NOME[l.site] || l.site)}</span>${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
     <h3 class="det-tit">${esc(l.titulo)}</h3>
-    <div class="det-end">${esc([l.endereco, l.bairro && !(l.endereco || "").includes(l.bairro) ? l.bairro : "", l.cidade && `${l.cidade}/${l.uf}`].filter(Boolean).join(" · "))}</div>
+    <div class="det-end">${esc(enderecoTexto(l))}</div>
     <button class="btn-maps vidro" id="compartilhar" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>Compartilhar</button>
     ${linkMaps(l) ? `<a class="btn-maps vidro" href="${esc(linkMaps(l))}" target="_blank" rel="noopener noreferrer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Ver no Google Maps</a>` : ""}
     <div class="caixa vidro">

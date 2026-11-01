@@ -582,12 +582,18 @@ def mega_parse(html):
     return lotes
 
 
+_COORD = re.compile(r"^\s*-?\d{1,3}\.\d+\s*,\s*-?\d{1,3}\.\d+\s*$")
+
+
 def mega_endereco(html):
-    """Endereço exato do mapa da página do lote (o mesmo que a Mega mostra no Google Maps)."""
-    m = re.search(r'maps/embed/v1/place\?[^"]*?[?&;]q=([^"&]+)', html)
-    if not m:
-        return ""
-    return re.sub(r"\s+", " ", urllib.parse.unquote_plus(_html.unescape(m.group(1)))).strip()[:250]
+    """Endereço da página do lote da Mega: (texto da linha "Localização", coordenadas do mapa, q do mapa).
+    O texto é o endereço exato que o site mostra; o mapa às vezes traz só coordenadas (e já vieram erradas)."""
+    t = texto(html)
+    m = re.search(r"Localiza[çc][ãa]o\s+([^|]{6,200}?,\s*[A-Z]{2})\s+Comitente", t)
+    end = re.sub(r"\s+", " ", m.group(1)).strip() if m else ""
+    q = re.search(r'maps/embed/v1/place\?[^"]*?[?&;]q=([^"&]+)', html)
+    q = re.sub(r"\s+", " ", urllib.parse.unquote_plus(_html.unescape(q.group(1)))).strip()[:250] if q else ""
+    return end, (q if _COORD.match(q) else ""), ("" if _COORD.match(q) else q)
 
 
 def coletar_mega(http, log, limite=4000, categorias=("imoveis",), completo=True):

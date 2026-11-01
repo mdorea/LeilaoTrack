@@ -293,22 +293,24 @@ def atualizar_lances(http, site, lidos, anteriores):
 
 
 # ---- endereço exato (Mega): a lista só traz bairro/cidade; a página do lote tem o mapa com a rua e o número ----
-ENDERECOS_POR_LEITURA = 120
+ENDERECOS_POR_LEITURA = 150
 
 
 def atualizar_enderecos(http, site, lidos, anteriores):
     feitos = 0
     for l in lidos:
         v = anteriores.get(l["id"]) or {}
-        if v.get("end_maps") or v.get("end_lido"):
-            for k in ("end_maps", "end_lido"):
+        if v.get("end_v") == 2:                      # já lido da página: guarda
+            for k in ("end_maps", "end_v", "end_coord", "end_lido"):
                 if v.get(k):
                     l[k] = v[k]
+            if v.get("endereco"):
+                l["endereco"] = v["endereco"]
             continue
         if feitos >= ENDERECOS_POR_LEITURA or l.get("tipo") == "Veículo":
             continue
         try:
-            end = coletores.mega_endereco(http.get(l["url"]))
+            texto, coord, q = coletores.mega_endereco(http.get(l["url"]))
             feitos += 1
         except coletores.Bloqueado as e:
             log(f"{site}: parei de ler endereços ({e})")
@@ -316,11 +318,19 @@ def atualizar_enderecos(http, site, lidos, anteriores):
         except Exception as e:
             log(f"{site}: não li o endereço de {l['id']} ({e})")
             continue
-        if end:
-            l["end_maps"] = end
+        l["end_v"] = 2
         l["end_lido"] = AGORA_S[:10]
+        if texto:
+            l["endereco"] = texto
+            l["end_maps"] = texto
+        elif q:
+            l["end_maps"] = q
+        else:
+            l.pop("end_maps", None)
+        if coord:
+            l["end_coord"] = coord
     if feitos:
-        log(f"{site}: endereço exato lido em {feitos} lotes")
+        log(f"{site}: endereço lido da página em {feitos} lotes")
 
 
 def brl(v):
@@ -430,7 +440,7 @@ def main():
                     textos.append(("data", f"Data alterada para {l['encerra'].replace('T', ' ')}"))
                 for tipo, t in textos:
                     eventos.insert(0, {"id": l["id"], "quando": AGORA_S, "tipo": tipo, "texto": t})
-                for k in ("geo", "geo_q", "geo_tent"):
+                for k in ("geo", "geo_q", "geo_qt", "geo_tent"):
                     if velho.get(k) and not l.get(k):
                         l[k] = velho[k]
                 l["visto"] = velho.get("visto", AGORA_S)
