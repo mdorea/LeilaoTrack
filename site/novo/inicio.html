@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; upgrade-insecure-requests">
+<meta name="referrer" content="no-referrer">
+<title>LeilãoTrack · Todos os leilões de imóveis. Um só lugar.</title>
+<meta name="description" content="O LeilãoTrack reúne imóveis de leilão de vários leiloeiros numa lista só, estima o valor de mercado com nível de confiança e ajuda a analisar os documentos antes do lance. Beta fechado para investidores.">
+<meta name="theme-color" content="#1E1640">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="LeilãoTrack · Todos os leilões. Um só lugar.">
+<meta property="og:description" content="Triagem de imóveis de leilão com valor de mercado estimado, mapa e perícia com IA. Beta fechado para investidores.">
+<meta property="og:locale" content="pt_BR">
+<meta name="versao" content="__VERSAO__">
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="icone-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/landing.css?v=__VERSAO__">
+</head>
+<body>
+<div class="fundo" aria-hidden="true"></div>
+
+<header class="topo">
+  <div class="caixa">
+    <a class="marca" href="#topo" aria-label="LeilãoTrack, início da página">
+      <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></svg></span>
+      <b>Leilão<span>Track</span></b>
+    </a>
+    <nav class="menu" aria-label="Seções">
+      <a href="#sobre">Sobre</a>
+      <a href="#recursos">O que faz</a>
+      <a href="#estimativa">Valor estimado</a>
+      <a href="#para-quem">Para quem é</a>
+      <a href="#acesso">Como pedir acesso</a>
+      <a href="#perguntas">Perguntas</a>
+    </nav>
+    <div class="acoes">
+      <a class="btn btn-vidro btn-peq" href="./">Entrar</a>
+      <a class="btn btn-acc btn-peq" href="#acesso">Pedir acesso</a>
+    </div>
+  </div>
+</header>
+
+<main id="topo">
+
+<!-- ============ HERO ============ -->
+<div class="hero">
+  <div class="caixa">
+    <div>
+      <span class="selo"><i aria-hidden="true"></i>Beta fechado · vagas para investidores de leilão</span>
+      <h1>Todos os leilões. <em>Um só lugar.</em></h1>
+      <p class="sub">O LeilãoTrack junta os imóveis de leilão de vários leiloeiros numa lista só, estima o valor de mercado com o nível de confiança à mostra e ajuda a analisar o edital antes do lance.</p>
+      <div class="cta">
+        <a class="btn btn-acc" href="#acesso">Quero pedir acesso</a>
+        <a class="btn btn-vidro" href="#recursos">Ver o que ele faz</a>
+      </div>
+      <p class="nota-cta">Já tem convite? <a href="./">Entre aqui</a>.</p>
+      <div class="numeros">
+        <div class="num"><b>4</b><span>leiloeiros numa lista só</span></div>
+        <div class="num"><b>+1.600</b><span>imóveis ativos hoje</span></div>
+        <div class="num"><b>1 h</b><span>entre as atualizações</span></div>
+        <div class="num"><b>0</b><span>lances dados por nós</span></div>
+      </div>
+    </div>
+
+    <div class="vitrine" aria-label="Exemplo ilustrativo de como os imóveis aparecem">
+      <span class="rotulo">Exemplo ilustrativo</span>
+      <div class="cartao">
+        <div class="foto" aria-hidden="true"></div>
+        <div class="dados">
+          <small><b>#1</b> · Mega Leilões · novo</small>
+          <strong>Casa 140 m² · Guarujá/SP</strong>
+          <span class="valor">R$ 317.400 <s>praça: R$ 289.000</s></span>
+          <div class="etiquetas">
+            <span class="etq v">Estimado: R$ 410 a 485 mil</span>
+            <span class="etq">Confiança média</span>
+          </div>
+        </div>
+      </div>
+      <div class="cartao">
+        <div class="foto b" aria-hidden="true"></div>
+        <div class="dados">
+          <small>Frazão · fecha em 3 dias</small>
+          <strong>Apartamento 62 m² · Itanhaém/SP</strong>
+          <span class="valor">R$ 139.666</span>
+          <div class="etiquetas">
+            <span class="etq l">Fazer perícia</span>
+            <span class="etq">Desconto 30%+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SOBRE ============ -->
+<section id="sobre" class="faixa">
+  <div class="caixa">
+    <div class="cab">
+      <p class="ov">Sobre</p>
+      <h2>Menos abas abertas. Mais tempo para analisar.</h2>
+      <p>Quem investe em leilão de imóveis acompanha vários sites, cada um com seu formato, e passa horas só para saber o que tem de novo. O LeilãoTrack faz essa triagem inicial por você.</p>
+    </div>
+    <div class="duas">
+      <div class="card">
+        <h3>O problema</h3>
+        <ul class="lista nao">
+          <li>Cada leiloeiro tem um site, um filtro e um jeito de mostrar o preço.</li>
+          <li>A 1ª e a 2ª praça, o lance atual e a data ficam espalhados.</li>
+          <li>Saber se o preço está bom exige planilha e muita pesquisa.</li>
+          <li>Edital e matrícula têm risco escondido em páginas de texto.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>O objetivo</h3>
+        <ul class="lista">
+          <li>Reunir os imóveis de todos os leiloeiros numa lista só, atualizada de hora em hora.</li>
+          <li>Mostrar praça, lance atual e quanto falta, sem abrir cinco abas.</li>
+          <li>Dar uma referência de valor de mercado, dizendo o quanto ela é confiável.</li>
+          <li>Apontar os riscos do edital e dos documentos antes do lance.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RECURSOS ============ -->
+<section id="recursos">
+  <div class="caixa">
+    <div class="cab">
+      <p class="ov">O que faz</p>
+      <h2>Do primeiro filtro ao último documento</h2>
+      <p>Tudo o que você precisa para separar o que vale a pena do que só parece barato.</p>
+    </div>
+    <div class="grade g3">
+      <div class="card">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
+        <h3>Lista única com filtros</h3>
+        <p>Frazão, Portal Zuk, Mega Leilões e Biasi juntos. Filtre por estado, cidade, tipo, valor, desconto e prazo, e ordene como preferir.</p>
+      </div>
+      <div class="card">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
+        <h3>Mapa pelo endereço</h3>
+        <p>Cada imóvel no lugar certo. Toque numa bolha e veja a lista exata dos imóveis daquela região, depois aproxime para separar.</p>
+      </div>
+      <div class="card">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>
+        <h3>Valor de mercado estimado</h3>
+        <p>Uma faixa de preço calculada com imóveis parecidos do mesmo bairro, com a confiança (média ou baixa) e o método explicados em cada lote.</p>
+      </div>
+      <div class="card">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/></svg></span>
+        <h3>Vendas reais da região</h3>
+        <p>Na cidade de São Paulo, o preço por m² de vendas já registradas na rua ou no bairro (dados abertos do ITBI), para comparar com o lance.</p>
+      </div>
+      <div class="card">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></svg></span>
+        <h3>Lance atual em destaque</h3>
+        <p>O valor que o imóvel está de fato, sem esconder o lance mínimo da praça. Você vê o próximo lance e o incremento antes de abrir o site oficial.</p>
+      </div>
+      <div class="card">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></span>
+        <h3>Perícia com IA nos documentos</h3>
+        <p>Envie edital e matrícula e receba um resumo de dívidas, ocupação e riscos. Você usa a sua própria chave de IA, guardada com criptografia.</p>
+      </div>
+      <div class="card">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
+        <h3>Favoritos e avisos</h3>
+        <p>Favorite os lotes e acompanhe mudanças de valor, de data e de situação, sem precisar voltar a cada hora para conferir.</p>
+      </div>
+      <div class="card">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h2M12 12h2M16 12h0M8 16h2M12 16h2M16 16h0"/></svg></span>
+        <h3>Calculadora de lance</h3>
+        <p>Veja quanto pode dar de lance considerando comissão do leiloeiro, ITBI, registro, reforma e IPTU atrasado, para saber se a conta fecha.</p>
+      </div>
+      <div class="card">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg></span>
+        <h3>Top 15 do dia</h3>
+        <p>Um ranking de casas e apartamentos pelo seu perfil (estados e tipos), para você abrir o app e já saber por onde começar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COMO FUNCIONA ============ -->
+<section class="faixa" id="como-funciona">
+  <div class="caixa">
+    <div class="cab">
+      <p class="ov">Como funciona</p>
+      <h2>Você decide. O lance é no site oficial.</h2>
+      <p>O LeilãoTrack é uma ferramenta de triagem. Quem conduz o leilão continua sendo o leiloeiro.</p>
+    </div>
+    <div class="passos">
+      <div class="card passo">
+        <h3>Lemos os leiloeiros</h3>
+        <p>De hora em hora, o app confere os sites dos leiloeiros e traz imóveis novos, mudanças de valor, datas e lances.</p>
+      </div>
+      <div class="card passo">
+        <h3>Organizamos e comparamos</h3>
+        <p>Cada lote ganha endereço no mapa, valor de mercado estimado, nível de confiança e, quando existe, o preço de vendas reais da região.</p>
+      </div>
+      <div class="card passo">
+        <h3>Você analisa e dá o lance</h3>
+        <p>Escolha os favoritos, faça a perícia dos documentos e clique em “Ir para o anúncio oficial” para dar o lance com o leiloeiro.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ESTIMATIVA ============ -->
+<section id="estimativa">
+  <div class="caixa">
+    <div class="cab">
+      <p class="ov">Valor de mercado estimado</p>
+      <h2>Uma estimativa que mostra o quanto confiar nela</h2>
+      <p>Em vez de um número mágico, o LeilãoTrack mostra uma faixa de preço, quantos imóveis parecidos entraram na conta e a confiança do resultado. Em testes com lotes reais, medimos o quanto cada nível acerta.</p>
+    </div>
+    <div class="regua">
+      <div class="card conf">
+        <span class="sel-conf m">Confiança média</span>
+        <span class="faixa-v">Mesmo bairro</span>
+        <p>Pelo menos 3 imóveis parecidos no bairro. Em testes, a faixa acertou dentro de ±20% em cerca de 6 de cada 10 casos.</p>
+      </div>
+      <div class="card conf">
+        <span class="sel-conf b">Confiança baixa</span>
+        <span class="faixa-v">Só a cidade</span>
+        <p>Poucos parecidos no bairro, então usamos a cidade. Serve como referência de partida: acertou em cerca de 1 de cada 3 casos.</p>
+      </div>
+    </div>
+    <p class="aviso"><b>Referência, não laudo.</b> O cálculo usa a avaliação dos imóveis de leilão por m² de área construída, mais o histórico dos últimos 12 meses. Não existe selo de confiança “alta”, porque ainda não temos dados para garantir isso. Antes de dar qualquer lance, confira o imóvel e o mercado local.</p>
+  </div>
+</section>
+
+<!-- ============ PARA QUEM ============ -->
+<section class="faixa" id="para-quem">
+  <div class="caixa">
+    <div class="cab">
+      <p class="ov">Para quem é</p>
+      <h2>Feito com quem investe em leilão de imóveis</h2>
+      <p>Neste beta fechado, estamos chamando investidores que já conhecem o mercado de leilões. Queremos o seu olhar para validar o que funciona e o que ainda precisa melhorar.</p>
+    </div>
+    <div class="duas">
+      <div class="card">
+        <h3>Para entrar, você precisa</h3>
+        <ul class="lista">
+          <li>Investir ou acompanhar leilões de imóveis com frequência (arrematar não é obrigatório, mas conhecer o processo é).</li>
+          <li>Topar testar de verdade e contar o que achou: erros, dúvidas e o que faltou.</li>
+          <li>Ter um e-mail para receber o seu convite individual.</li>
+          <li>Entender que o app é triagem, não parecer jurídico nem recomendação de investimento.</li>
+          <li>Opcional: uma chave de IA sua (Claude ou Gemini) para usar a perícia dos documentos.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>O que você recebe</h3>
+        <ul class="lista">
+          <li>Acesso gratuito durante o beta, num grupo fechado e pequeno.</li>
+          <li>Todas as funções do app, no celular ou no computador.</li>
+          <li>Canal direto para sugerir melhorias e ver o app evoluir com o seu feedback.</li>
+          <li>Aviso com antecedência sobre qualquer mudança de regras ou de planos ao fim do beta.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ACESSO ============ -->
+<section id="acesso">
+  <div class="caixa">
+    <div class="cab">
+      <p class="ov">Como pedir acesso</p>
+      <h2>Entrada por convite, em três passos</h2>
+      <p>O acesso é liberado um a um, para o grupo ficar pequeno e o retorno ser bom de acompanhar.</p>
+    </div>
+    <div class="passos">
+      <div class="card passo">
+        <h3>Envie o seu pedido</h3>
+        <p>Conte o seu nome, o e-mail e há quanto tempo você investe em leilão de imóveis.</p>
+      </div>
+      <div class="card passo">
+        <h3>Receba o convite</h3>
+        <p>Aprovamos os pedidos manualmente. Você recebe um código individual, no formato XXXX-XXXX-XXXX.</p>
+      </div>
+      <div class="card passo">
+        <h3>Crie a senha e entre</h3>
+        <p>Na tela “Recebi um convite”, informe o e-mail e o código, crie a sua senha e comece a usar.</p>
+      </div>
+    </div>
+    <div class="chamada">
+      <h2>Quer testar o LeilãoTrack?</h2>
+      <p>Estamos abrindo as primeiras vagas para investidores de leilão de imóveis.</p>
+      <a class="btn btn-acc" href="#acesso" aria-disabled="true" role="link" tabindex="0">Pedir acesso · canal em construção</a>
+      <p class="pequeno">Estamos montando o canal de pedidos. Em breve ele aparece aqui. Já tem convite? <a href="./">Entre por aqui</a>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PERGUNTAS ============ -->
+<section class="faixa" id="perguntas">
+  <div class="caixa">
+    <div class="cab">
+      <p class="ov">Perguntas</p>
+      <h2>O que costumam perguntar</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Quanto custa?</summary>
+        <p>Durante o beta fechado, o acesso é gratuito. Ainda estamos definindo como o LeilãoTrack será oferecido depois. Quem estiver no grupo será avisado com antecedência, antes de qualquer cobrança.</p>
+      </details>
+      <details>
+        <summary>Vocês dão o lance por mim?</summary>
+        <p>Não. O lance é sempre feito por você, no site oficial do leiloeiro. O LeilãoTrack ajuda a escolher e a analisar, e leva você direto ao anúncio original.</p>
+      </details>
+      <details>
+        <summary>Quais leiloeiros estão no app?</summary>
+        <p>Hoje: Frazão Leilões, Portal Zuk, Mega Leilões e Biasi Leilões. A atualização acontece de hora em hora, e a do Zuk a cada 2 horas. Novos leiloeiros entram conforme o grupo pedir.</p>
+      </details>
+      <details>
+        <summary>Posso confiar no valor de mercado estimado?</summary>
+        <p>Use como ponto de partida. Mostramos a faixa, a confiança e quantos imóveis parecidos foram usados, e os números de acerto dos nossos testes estão acima. Não é laudo de avaliação, e a decisão é sua.</p>
+      </details>
+      <details>
+        <summary>Preciso de uma chave de IA?</summary>
+        <p>Só se quiser usar a perícia dos documentos. Você coloca a sua própria chave (Claude ou Gemini) e paga direto ao provedor pelo que usar. O restante do app funciona sem isso.</p>
+      </details>
+      <details>
+        <summary>Funciona no celular?</summary>
+        <p>Sim. O app é feito para o celular e para o computador, com tema claro, escuro ou automático, e dá para instalar na tela inicial.</p>
+      </details>
+      <details>
+        <summary>Isso é recomendação de investimento?</summary>
+        <p>Não. É uma ferramenta de triagem de leilões. Não substitui a leitura do edital, a análise da matrícula nem a orientação de um advogado.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="caixa">
+    <a class="marca" href="#topo" aria-label="LeilãoTrack, voltar ao topo">
+      <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></svg></span>
+      <b>Leilão<span>Track</span></b>
+    </a>
+    <p>LeilãoTrack · Desenvolvido com IA · 2026</p>
+    <p>Ferramenta de triagem de leilões. Não é recomendação de investimento nem parecer jurídico.</p>
+    <p>O lance é sempre feito no site oficial do leiloeiro.</p>
+  </div>
+</footer>
+
+</body>
+</html>
