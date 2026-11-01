@@ -497,6 +497,7 @@ function abrirLote(id) {
     <div class="det-site"><i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i><span style="color:${SITE_COR[l.site] || "inherit"}">${esc(SITE_NOME[l.site] || l.site)}</span>${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
     <h3 class="det-tit">${esc(l.titulo)}</h3>
     <div class="det-end">${esc([l.endereco, l.bairro && !(l.endereco || "").includes(l.bairro) ? l.bairro : "", l.cidade && `${l.cidade}/${l.uf}`].filter(Boolean).join(" · "))}</div>
+    <button class="btn-maps vidro" id="compartilhar" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>Compartilhar</button>
     ${linkMaps(l) ? `<a class="btn-maps vidro" href="${esc(linkMaps(l))}" target="_blank" rel="noopener noreferrer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Ver no Google Maps</a>` : ""}
     <div class="caixa vidro">
       ${l._lance ? `<div class="r"><div><div class="rot">Lance atual · ${l.lances} lance${l.lances > 1 ? "s" : ""}${l.lance_quando ? " · visto às " + esc(new Date(l.lance_quando).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"})) : ""}</div><div class="valor-grande">${fmtBRL(l._lance)}</div></div>${l._desc > 0 ? `<span class="pill">-${l._desc}% da 1ª praça</span>` : ""}</div>
@@ -518,6 +519,14 @@ function abrirLote(id) {
     <button class="btn-sec vidro" id="abrir-calc">Calculadora: quanto posso dar de lance?</button>
     <button class="btn-sec vidro" id="abrir-pericia">Fazer perícia com os documentos ›</button>
     ${oficial ? `<a class="btn-grande btn-acc" style="display:grid;place-items:center;text-decoration:none" href="${esc(oficial)}" target="_blank" rel="noopener noreferrer">Ir para o anúncio oficial ›</a>` : ""}`;
+  $("#compartilhar").addEventListener("click", async () => {
+    const url = location.origin + location.pathname + "#lote=" + encodeURIComponent(l.id);
+    const texto = `${l.titulo}${(l._preco || l.valor) ? " · " + fmtBRL(l._preco || l.valor) : ""} · no LeilãoTrack`;
+    try {
+      if (navigator.share) { await navigator.share({title: "LeilãoTrack", text: texto, url}); return; }
+      await navigator.clipboard.writeText(url); toast("Link copiado. Só abre para quem tem acesso ao grupo");
+    } catch (e) { if (e && e.name !== "AbortError") toast("Não consegui copiar o link"); }
+  });
   $("#abrir-calc").addEventListener("click", () => abrirCalc(l));
   $("#abrir-pericia").addEventListener("click", () => { fechar(); trocarAba("pericia"); Pericia.comLote(l); });
   $("#fav-lote").addEventListener("click", async () => {
@@ -526,6 +535,7 @@ function abrirLote(id) {
     const c = document.querySelector(`[data-fav="${CSS.escape(l.id)}"]`); if (c) { c.classList.toggle("on", on); c.innerHTML = coracao(on); }
   });
   $("#corpo-lote").scrollTop = 0; abrir("#folha-lote");
+  history.replaceState(history.state, "", location.pathname + location.search + "#lote=" + encodeURIComponent(id));
 }
 
 /* ---------------- calculadora do lote (salva na conta) ---------------- */

@@ -175,6 +175,7 @@ async function entrarNoApp(senha) {
   atualizarBadge();
   esconderCarregando();
   if (!CONTA.prefs.configurado) abrirPref(true);
+  else abrirLotePendente();
 }
 SB.aoMudar(s => { if (!s && NO_APP) { NO_APP = false; mostrarAcesso("entrar", {erro: "Sua sessão terminou. Entre de novo."}); } });
 
@@ -292,15 +293,24 @@ setInterval(checarVersao, 10 * 60000);
 
 /* ---------------- início ---------------- */
 // link de convite: #convite=CODIGO&email=... (o código não fica no endereço depois de lido)
+let LOTE_PENDENTE = null;  // link de imóvel (#lote=ID): abre a ficha assim que a conta e os lotes carregarem
+function abrirLotePendente() {
+  const id = LOTE_PENDENTE; LOTE_PENDENTE = null;
+  if (!id) return;
+  if (S.lotes.some(x => x.id === id)) abrirLote(id);
+  else toast("Esse imóvel não está mais na lista (pode ter encerrado)");
+}
 function lerConviteDoEndereco() {
   if (location.hash.length < 2) return null;
   const q = new URLSearchParams(location.hash.slice(1)); let c = null;
+  const lote = q.get("lote"); if (lote && lote.length < 90) LOTE_PENDENTE = lote;
   if (q.get("convite")) c = {codigo: q.get("convite").slice(0, 20), email: (q.get("email") || "").slice(0, 254)};
   history.replaceState(null, "", location.pathname + location.search);
   return c;
 }
 window.addEventListener("hashchange", () => {
   const c = lerConviteDoEndereco();
+  if (LOTE_PENDENTE && NO_APP && S.lotes.length) abrirLotePendente();
   if (c && !NO_APP && SB.configurado) mostrarAcesso("convite", c);
   else if (c) toast("Você já está conectado neste aparelho");
 });

@@ -124,7 +124,7 @@ function abrir(id) {
   fecharReal(); folhaAberta = $(id); folhaAberta.style.transform = ""; folhaAberta.classList.add("on"); $("#scrim").classList.add("on"); document.body.style.overflow = "hidden";
   if (!(history.state && history.state.folha)) history.pushState({folha: true}, "");
 }
-function fecharReal() { if (folhaAberta) { folhaAberta.classList.remove("on"); folhaAberta.style.transform = ""; } folhaAberta = null; $("#scrim").classList.remove("on"); document.body.style.overflow = ""; }
+function fecharReal() { if (location.hash.startsWith("#lote=")) history.replaceState(history.state, "", location.pathname + location.search); if (folhaAberta) { folhaAberta.classList.remove("on"); folhaAberta.style.transform = ""; } folhaAberta = null; $("#scrim").classList.remove("on"); document.body.style.overflow = ""; }
 function fechar() { const tinha = !!folhaAberta; fecharReal(); if (tinha && history.state && history.state.folha) history.back(); }
 window.addEventListener("popstate", () => { if (folhaAberta) fecharReal(); });
 $("#scrim").addEventListener("click", () => fechar());

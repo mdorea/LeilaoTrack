@@ -426,6 +426,7 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .leaflet-container{font-family:var(--font)}
 .leaflet-control-attribution{font-size:9.5px}
 .grade-cidade{grid-template-columns:1fr}
+.btn-maps+.btn-maps{margin-left:8px}
 .btn-maps{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px;border-radius:17px;font-size:12.5px;font-weight:600;color:var(--tx);text-decoration:none;margin:-6px 0 14px}
 .cab h2{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:480px){.modo .modo-txt{display:none}.modo button{padding:0 9px}.cab{gap:8px}}
