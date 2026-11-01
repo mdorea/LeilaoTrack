@@ -147,6 +147,7 @@ $("#pref-salvar").addEventListener("click", async () => {
     S.filtros.inicio.top = true; LS.set("filtro", S.filtros.inicio);
     if (S.aba !== "inicio") trocarAba("inicio"); else render();
     atualizarBadge(); window.scrollTo({top: 0}); if (!prefPrimeiro) toast("Preferências salvas");
+    if (tourPendente) { tourPendente = false; setTimeout(() => Tour.iniciar(), 700); }
   } catch (er) { $("#pref-erro").textContent = "Não consegui salvar agora. Confira a conexão."; }
   bt.disabled = false;
 });
@@ -166,6 +167,7 @@ async function entrarNoApp(senha) {
   // com a senha em mãos, prepara a chave que abre a sua chave de IA guardada na conta (em qualquer aparelho)
   if (senha) await IA.prepararCofre(senha).catch(() => {});
   $("#tela-acesso").hidden = true;
+  tourPendente = !CONTA.prefs.configurado && !(CONTA.ajustes && CONTA.ajustes.tour_visto);  // conta nova: mostra o tour depois do Top 15
   $("#app").hidden = false; $("#nav").hidden = false; NO_APP = true;
   aplicarTema(CONTA.perfil.nome); avisoSamsung();
   $("#grade").innerHTML = esqueletos(6);
@@ -233,6 +235,7 @@ async function renderAjustes() {
       <button class="btn-sec vidro" id="aj-sair" style="color:var(--hot)">Sair deste aparelho</button></div>
     <div class="painel vidro"><h4>Meu Top 15</h4><p class="texto-ajuda" style="margin-top:0">${esc(textoPerfil())}</p><button class="btn-sec vidro" id="aj-pref">Ajustar estados e tipos</button></div>
     <div class="painel vidro"><h4>Minha IA</h4><p class="texto-ajuda" style="margin-top:0">${ia ? `Usando <b>${esc(ia.nome)}</b> com a sua chave (…${esc(ia.final)}), guardada na sua conta e protegida com a sua senha.` : "Nenhuma chave neste aparelho. A perícia usa a sua própria chave de IA (Claude ou Gemini)."}</p><button class="btn-sec vidro" id="aj-ia">${ia ? "Trocar ou apagar a chave" : "Conectar minha IA"}</button></div>
+    <div class="painel vidro"><h4>Tour do app</h4><p class="texto-ajuda" style="margin-top:0">Reveja onde fica cada coisa, em 1 minuto.</p><button class="btn-sec vidro" id="aj-tour">Ver o tour de novo</button></div>
     <div class="painel vidro"><h4>Aparência</h4>
       <div class="chips wrap" id="aj-temas">${[["auto", "Automático (dia/noite)"], ["claro", "Claro"], ["escuro", "Escuro"]].map(([v, t]) => `<button class="chip ${TEMA === v ? "on" : "vidro"}" data-tema="${v}">${t}</button>`).join("")}</div></div>
     <div class="painel vidro"><h4>Atualização automática</h4>${statusSites(est)}
@@ -253,6 +256,7 @@ async function renderAjustes() {
   });
   $("#aj-sair").addEventListener("click", sairDoApp);
   $("#aj-pref").addEventListener("click", () => abrirPref(false));
+  $("#aj-tour").addEventListener("click", () => { trocarAba("inicio"); setTimeout(() => Tour.iniciar(), 250); });
   $("#aj-ia").addEventListener("click", () => IA.abrirTela(renderAjustes));
   $("#aj-temas").addEventListener("click", e => { const b = e.target.closest("[data-tema]"); if (!b) return; TEMA = b.dataset.tema; LS.set("tema", TEMA); aplicarTema(CONTA.perfil.nome); renderAjustes(); });
   if (CONTA.admin) Admin.montar($("#aj-admin"));
@@ -293,6 +297,7 @@ setInterval(checarVersao, 10 * 60000);
 
 /* ---------------- início ---------------- */
 // link de convite: #convite=CODIGO&email=... (o código não fica no endereço depois de lido)
+let tourPendente = false;
 let LOTE_PENDENTE = null;  // link de imóvel (#lote=ID): abre a ficha assim que a conta e os lotes carregarem
 function abrirLotePendente() {
   const id = LOTE_PENDENTE; LOTE_PENDENTE = null;
