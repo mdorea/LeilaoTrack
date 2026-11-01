@@ -293,11 +293,12 @@ def atualizar_lances(http, site, lidos, anteriores):
 
 
 # ---- endereço exato (Mega): a lista só traz bairro/cidade; a página do lote tem o mapa com a rua e o número ----
-ENDERECOS_POR_LEITURA = 150
+ENDERECOS_POR_LEITURA = 450
+ENDERECOS_CONEXOES = 3
 
 
 def atualizar_enderecos(http, site, lidos, anteriores):
-    feitos = 0
+    pend = []
     for l in lidos:
         v = anteriores.get(l["id"]) or {}
         if v.get("end_v") == 2:                      # já lido da página: guarda
@@ -306,31 +307,50 @@ def atualizar_enderecos(http, site, lidos, anteriores):
                     l[k] = v[k]
             if v.get("endereco"):
                 l["endereco"] = v["endereco"]
-            continue
-        if feitos >= ENDERECOS_POR_LEITURA or l.get("tipo") == "Veículo":
-            continue
-        try:
-            texto, coord, q = coletores.mega_endereco(http.get(l["url"]))
+        elif l.get("tipo") != "Veículo":
+            pend.append(l)
+    pend = pend[:ENDERECOS_POR_LEITURA]
+    if not pend:
+        return
+    # leitura em paralelo (3 conexões, cada uma com pausa própria) para não passar de 30 min
+    from concurrent.futures import ThreadPoolExecutor
+    bloqueio = []
+
+    def ler(fatia, h):
+        res = []
+        for l in fatia:
+            if bloqueio:
+                break
+            try:
+                res.append((l, coletores.mega_endereco(h.get(l["url"]))))
+            except coletores.Bloqueado as e:
+                bloqueio.append(str(e)); break
+            except Exception as e:
+                log(f"{site}: não li o endereço de {l['id']} ({e})")
+        return res
+
+    n = ENDERECOS_CONEXOES
+    hs = [http] + [coletores.Http(pausa=http.pausa) for _ in range(n - 1)]
+    with ThreadPoolExecutor(n) as ex:
+        partes = list(ex.map(ler, [pend[i::n] for i in range(n)], hs))
+    feitos = 0
+    for res in partes:
+        for l, (texto, coord, q) in res:
             feitos += 1
-        except coletores.Bloqueado as e:
-            log(f"{site}: parei de ler endereços ({e})")
-            break
-        except Exception as e:
-            log(f"{site}: não li o endereço de {l['id']} ({e})")
-            continue
-        l["end_v"] = 2
-        l["end_lido"] = AGORA_S[:10]
-        if texto:
-            l["endereco"] = texto
-            l["end_maps"] = texto
-        elif q:
-            l["end_maps"] = q
-        else:
-            l.pop("end_maps", None)
-        if coord:
-            l["end_coord"] = coord
-    if feitos:
-        log(f"{site}: endereço lido da página em {feitos} lotes")
+            l["end_v"] = 2
+            l["end_lido"] = AGORA_S[:10]
+            if texto:
+                l["endereco"] = texto
+                l["end_maps"] = texto
+            elif q:
+                l["end_maps"] = q
+            else:
+                l.pop("end_maps", None)
+            if coord:
+                l["end_coord"] = coord
+    if bloqueio:
+        log(f"{site}: parei de ler endereços ({bloqueio[0]})")
+    log(f"{site}: endereço lido da página em {feitos} lotes")
 
 
 def brl(v):
