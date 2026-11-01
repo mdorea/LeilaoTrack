@@ -122,8 +122,8 @@ button,a,.chip,.card{touch-action:manipulation}
 .vazio{padding:50px 20px;text-align:center;color:var(--mu);border-radius:var(--r-card)}
 .mais{height:1px}
 /* barra inferior */
-.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 12px);width:min(560px,calc(100% - 24px));height:60px;border-radius:30px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;z-index:20;box-shadow:var(--shadow);padding:0 6px}
-.nav button,.nav .nav-link{height:48px;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10.5px;font-weight:500;color:var(--mu);text-decoration:none}
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 12px);width:min(560px,calc(100% - 24px));height:60px;border-radius:30px;display:grid;grid-template-columns:repeat(6,1fr);align-items:center;z-index:20;box-shadow:var(--shadow);padding:0 6px}
+.nav button,.nav .nav-link{height:48px;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:500;color:var(--mu);text-decoration:none}
 .nav button svg,.nav .nav-link svg{width:20px;height:20px}
 .nav .nav-link{color:var(--acc2)}
 .nav-badge{position:absolute;top:3px;left:calc(50% + 4px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--bg2)}
@@ -518,3 +518,10 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .tour-bt .btn-sec{padding:0 16px;border-radius:21px;font-size:14px;font-weight:600}
 .tour-bt .btn-acc{padding:0 20px;border-radius:21px;font-size:14px;font-weight:700;background:var(--acc);color:#1E1640}
 @media (prefers-reduced-motion:reduce){.tour-foco{transition:none}}
+
+/* aba Calculadora */
+.ca-busca{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.ca-res{display:flex;flex-direction:column;gap:6px}
+.ca-res button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px;padding:10px 12px;border-radius:12px;background:var(--glass2);border:1px solid var(--line);color:var(--tx);font-size:13px}
+.ca-res small{color:var(--mu)}
+.campo-busca{height:46px;padding:0 14px;border-radius:14px;border:1px solid var(--line);background:var(--glass2);color:var(--tx);font:inherit;font-size:14px;width:100%;box-sizing:border-box}

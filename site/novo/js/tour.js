@@ -9,7 +9,7 @@ const Tour = (() => {
     {alvo: "#modo", t: "Lista ou mapa", x: "No mapa, toque numa bolha para ver os imóveis daquela região e aproxime para separá-los."},
     {alvo: "#grade .card", t: "Leia o cartão", x: "Veja o lance atual, o mínimo da praça, o desconto e a data. Toque no cartão para abrir a ficha com valor estimado, mapa e histórico."},
     {alvo: "#grade .card [data-fav]", t: "Favorite e acompanhe", x: "Os favoritos vão para a aba Favoritos e geram aviso quando o valor, a data ou a situação mudar."},
-    {alvo: "#nav", t: "Suas abas", x: "Alertas mostra o que mudou. Perícia analisa os documentos com a sua própria IA (beta). Em Ajustes ficam o tema, a conta e a chave de IA."},
+    {alvo: "#nav", t: "Suas abas", x: "Alertas mostra o que mudou. Calculadora diz quanto dá para dar de lance. Perícia analisa os documentos com a sua própria IA (beta). Em Ajustes ficam o tema, a conta e a chave de IA."},
     {t: "Pronto para começar", x: "Dica: na ficha de um imóvel, use Compartilhar para mandar o link a quem também está no grupo. Para rever este tour, vá em Ajustes."},
   ];
   let passos = [], i = 0, raiz = null, foco = null, cartao = null, voltarA = null;

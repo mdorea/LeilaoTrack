@@ -552,14 +552,18 @@ function abrirLote(id) {
 
 /* ---------------- calculadora do lote (salva na conta) ---------------- */
 let _calcLote = null;
-function abrirCalc(l, daPericia) {
-  _calcLote = l;
+function dadosCalc(l, daPericia) {
   const soTerreno = /terreno de/i.test(l.titulo);
-  $("#calc-tit").innerHTML = `<b>${esc(l.titulo)}</b><br>Valores iniciais estimados a partir do anúncio. Ajuste com o que estiver no edital.`;
   const salvo = CONTA.calculos.get(l.id);
   const aval = l.referencia && l.referencia > l.valor ? l.referencia : null;
-  const dados = {lance: l._lance ? l._lance + (l.lance_inc || 0) : l.valor, mercado: !aval && l._est ? l._est.meio : null, avaliacao: aval, area: l.area_constr || (soTerreno ? null : l.area), cidade: l.cidade, tipo: l.tipo,
+  return {lance: l._lance ? l._lance + (l.lance_inc || 0) : l.valor, mercado: !aval && l._est ? l._est.meio : null, avaliacao: aval, area: l.area_constr || (soTerreno ? null : l.area), cidade: l.cidade, tipo: l.tipo,
     ocupado: !/desocup/i.test(l.ocupacao || ""), fixos: Object.assign({}, salvo || {}, daPericia || {})};
+}
+function abrirCalc(l, daPericia) {
+  _calcLote = l;
+  $("#calc-tit").innerHTML = `<b>${esc(l.titulo)}</b><br>Valores iniciais estimados a partir do anúncio. Ajuste com o que estiver no edital.`;
+  const salvo = CONTA.calculos.get(l.id);
+  const dados = dadosCalc(l, daPericia);
   Calc.render($("#calc-corpo"), dados);
   const fonte = $("#calc-fonte");
   fonte.hidden = !(salvo || daPericia);

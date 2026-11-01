@@ -184,14 +184,14 @@ SB.aoMudar(s => { if (!s && NO_APP) { NO_APP = false; mostrarAcesso("entrar", {e
 /* ---------------- abas ---------------- */
 $("#nav").addEventListener("click", e => { const b = e.target.closest("button"); if (b) trocarAba(b.dataset.aba); });
 function trocarAba(a) {
-  if (!["inicio", "favoritos", "alertas", "pericia", "ajustes"].includes(a)) a = "inicio";
+  if (!["inicio", "favoritos", "alertas", "calc", "pericia", "ajustes"].includes(a)) a = "inicio";
   S.aba = a; $$("#nav button").forEach(b => b.classList.toggle("on", b.dataset.aba === a));
   $("#aba-inicio").hidden = !(a === "inicio" || a === "favoritos"); $("#aba-alertas").hidden = a !== "alertas";
-  $("#aba-pericia").hidden = a !== "pericia"; $("#aba-ajustes").hidden = a !== "ajustes";
-  $(".topo").hidden = a === "pericia" || a === "ajustes";
+  $("#aba-calc").hidden = a !== "calc"; $("#aba-pericia").hidden = a !== "pericia"; $("#aba-ajustes").hidden = a !== "ajustes";
+  $(".topo").hidden = a === "pericia" || a === "ajustes" || a === "calc";
   window.scrollTo(0, 0);
   if (a === "alertas") { _vistoVisita = CONTA.prefs.alertas_visto || ""; renderAlertas(); }
-  else { _vistoVisita = null; if (a === "ajustes") renderAjustes(); else if (a === "pericia") { Pericia.iniciar(); avisoBeta(); } else render(); }
+  else { _vistoVisita = null; if (a === "ajustes") renderAjustes(); else if (a === "calc") CalcAba.iniciar(); else if (a === "pericia") { Pericia.iniciar(); avisoBeta(); } else render(); }
 }
 
 /* aviso BETA: aparece toda vez que a Perícia é aberta; o botão só libera após 5s */
