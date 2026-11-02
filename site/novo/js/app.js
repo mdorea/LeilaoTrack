@@ -214,6 +214,24 @@ $("#beta-ok").addEventListener("click", () => {
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#beta-aviso").hidden) e.preventDefault(); }, true);
 
 /* ---------------- ajustes ---------------- */
+/* só para o admin: um resumo simples para saber se os lotes estão em dia */
+function painelAtualizacao(est) {
+  const hm = d => new Date(d).toLocaleString("pt-BR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
+  const limiteH = {Zuk: 3.5, "Frazão": 2.5, Mega: 2.5, Biasi: 2.5};
+  const linhas = ["Zuk", "Frazão", "Mega", "Biasi"].map(site => {
+    const i = (est.sites || {})[site] || {};
+    const horas = i.quando ? (Date.now() - new Date(i.quando).getTime()) / 36e5 : Infinity;
+    const estado = i.status && i.status !== "ok" ? "erro" : horas > limiteH[site] ? "atrasado" : "ok";
+    return {site, estado, quando: i.quando};
+  });
+  const ruins = linhas.filter(l => l.estado !== "ok");
+  const resumo = ruins.length ? `Atenção: ${ruins.map(l => SITE_NOME[l.site] + (l.estado === "erro" ? " com erro" : " atrasado")).join(", ")}` : "Lotes em dia";
+  const cor = e => e === "ok" ? "var(--ok, #2f9e6b)" : e === "atrasado" ? "#d98a1f" : "var(--hot, #d64545)";
+  return `<div class="painel vidro"><h4>Atualização dos lotes <span class="selo-p" style="margin-left:6px">ADMIN</span></h4>
+    <p style="margin:0 0 10px;font-weight:600;color:${cor(ruins.length ? (ruins.some(l => l.estado === "erro") ? "erro" : "atrasado") : "ok")}">${esc(resumo)}</p>
+    ${linhas.map(l => `<div class="site-st"><span><i class="dot" style="display:inline-block;background:${cor(l.estado)};margin-right:8px"></i>${esc(SITE_NOME[l.site])}</span><span>${l.quando ? esc(hm(l.quando)) : "sem leitura"}</span></div>`).join("")}
+    <p class="texto-ajuda">Última leitura geral: <b>${esc(est.ultima ? hm(est.ultima) : "—")}</b>. Verde: em dia. Laranja: passou do prazo. Vermelho: a leitura falhou.</p></div>`;
+}
 function statusSites(est) {
   return ["Zuk", "Frazão", "Mega", "Biasi"].map(s => { const i = (est.sites || {})[s] || {};
     return `<div class="site-st"><span><i class="dot" style="display:inline-block;background:${SITE_COR[s]};margin-right:8px"></i>${SITE_NOME[s]}</span><span class="${i.status === "ok" ? "ok" : i.status ? "erro" : ""}">${i.status === "ok" ? `${Number(i.lotes || 0).toLocaleString("pt-BR")} lotes · ${esc(new Date(i.quando).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"}))}` : i.status === "pausado" ? "em pausa" : i.status === "erro" ? "erro ao ler" : "aguardando"}</span></div>`; }).join("");
@@ -238,8 +256,7 @@ async function renderAjustes() {
     <div class="painel vidro"><h4>Tour do app</h4><p class="texto-ajuda" style="margin-top:0">Reveja onde fica cada coisa, em 1 minuto.</p><button class="btn-sec vidro" id="aj-tour">Ver o tour de novo</button></div>
     <div class="painel vidro"><h4>Aparência</h4>
       <div class="chips wrap" id="aj-temas">${[["auto", "Automático (dia/noite)"], ["claro", "Claro"], ["escuro", "Escuro"]].map(([v, t]) => `<button class="chip ${TEMA === v ? "on" : "vidro"}" data-tema="${v}">${t}</button>`).join("")}</div></div>
-    <div class="painel vidro"><h4>Atualização automática</h4>${statusSites(est)}
-      <p class="texto-ajuda">Os sites são lidos na nuvem a cada <b>hora</b> (a Zuk, a cada 2 horas), uma vez só para todo o grupo.<br>Última leitura: <b>${esc(f(est.ultima))}</b> · próxima: <b>~${esc(f(est.proxima))}</b></p></div>
+    ${CONTA.admin ? painelAtualizacao(est) : ""}
     <div class="painel vidro"><h4>Instalar no celular</h4>
       <p class="texto-ajuda" style="margin-top:0">Abra este endereço no celular e toque em <b>Compartilhar › Adicionar à Tela de Início</b> (iPhone) ou <b>⋮ › Adicionar à tela inicial</b> (Android).</p></div>
     <div id="aj-admin"></div>`;
