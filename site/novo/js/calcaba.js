@@ -28,7 +28,7 @@ const CalcAba = (() => {
       return palavras.reduce((n, w) => n + (norm(l.cidade).startsWith(w) || norm(l.id).includes(w) ? 2 : 1), 0);
     };
     const achados = S.lotes.map(l => [pontos(l), l]).filter(x => x[0] >= 0).sort((x, y) => y[0] - x[0]).slice(0, 8).map(x => x[1]);
-    box.innerHTML = achados.map(l => `<button type="button" data-id="${esc(l.id)}"><b>${esc(l.titulo)}</b><small>${esc([enderecoTexto(l) || l.cidade, SITE_NOME[l.site] || l.site, fmtBRL(l.valor)].filter(Boolean).join(" · "))}</small></button>`).join("") || `<small class="texto-ajuda">Nenhum lote encontrado. Tente só o bairro, a cidade ou o nº do lote.</small>`;
+    box.innerHTML = achados.map(l => `<button type="button" data-id="${esc(l.id)}">${foto(l)}<span class="ca-txt"><b>${esc(l.titulo)}</b><small>${esc([enderecoTexto(l) || l.cidade, SITE_NOME[l.site] || l.site, fmtBRL(l.valor)].filter(Boolean).join(" · "))}</small></span></button>`).join("") || `<small class="texto-ajuda">Nenhum lote encontrado. Tente só o bairro, a cidade ou o nº do lote.</small>`;
   }
   function iniciar() {
     if (iniciado) return;

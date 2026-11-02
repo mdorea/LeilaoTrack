@@ -522,6 +522,9 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 /* aba Calculadora */
 .ca-busca{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .ca-res{display:flex;flex-direction:column;gap:6px}
-.ca-res button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px;padding:10px 12px;border-radius:12px;background:var(--glass2);border:1px solid var(--line);color:var(--tx);font-size:13px}
+.ca-res button{display:flex;flex-direction:row;align-items:center;text-align:left;gap:10px;padding:10px 12px;border-radius:12px;background:var(--glass2);border:1px solid var(--line);color:var(--tx);font-size:13px}
 .ca-res small{color:var(--mu)}
 .campo-busca{height:46px;padding:0 14px;border-radius:14px;border:1px solid var(--line);background:var(--glass2);color:var(--tx);font:inherit;font-size:14px;width:100%;box-sizing:border-box}
+.ca-res .foto{width:52px;height:52px;border-radius:11px;flex:none}
+.ca-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.ca-txt b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
