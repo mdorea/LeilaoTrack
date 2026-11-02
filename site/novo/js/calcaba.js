@@ -18,11 +18,17 @@ const CalcAba = (() => {
     $("#ca-salvar").hidden = !lote;
     $("#ca-lote").innerHTML = lote ? `<div class="lote-pericia">${foto(lote)}<div style="flex:1;min-width:0"><small class="texto-ajuda">LOTE</small><b style="display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(lote.titulo)}</b><small class="texto-ajuda">${esc(SITE_NOME[lote.site] || lote.site)} · ${fmtBRL(lote.valor)}</small></div><button class="btn-mini" id="ca-tirar">Tirar</button></div>` : "";
   }
+  const norm = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   function buscar() {
-    const q = $("#ca-q").value.trim().toLowerCase(), box = $("#ca-res");
-    if (q.length < 2) { box.innerHTML = ""; return; }
-    const achados = S.lotes.filter(l => `${l.titulo} ${l.cidade || ""} ${l.id}`.toLowerCase().includes(q)).slice(0, 6);
-    box.innerHTML = achados.map(l => `<button type="button" data-id="${esc(l.id)}"><b>${esc(l.titulo)}</b><small>${esc(SITE_NOME[l.site] || l.site)} · ${fmtBRL(l.valor)}</small></button>`).join("") || `<small class="texto-ajuda">Nenhum lote encontrado.</small>`;
+    const palavras = norm($("#ca-q").value).split(/\s+/).filter(Boolean), box = $("#ca-res");
+    if (!palavras.length) { box.innerHTML = ""; return; }
+    const pontos = l => {
+      const texto = norm(`${l.titulo} ${enderecoTexto(l)} ${l.cidade || ""} ${l.uf || ""} ${l.id} ${l.tipo || ""} ${SITE_NOME[l.site] || l.site}`);
+      if (!palavras.every(w => texto.includes(w))) return -1;
+      return palavras.reduce((n, w) => n + (norm(l.cidade).startsWith(w) || norm(l.id).includes(w) ? 2 : 1), 0);
+    };
+    const achados = S.lotes.map(l => [pontos(l), l]).filter(x => x[0] >= 0).sort((x, y) => y[0] - x[0]).slice(0, 8).map(x => x[1]);
+    box.innerHTML = achados.map(l => `<button type="button" data-id="${esc(l.id)}"><b>${esc(l.titulo)}</b><small>${esc([enderecoTexto(l) || l.cidade, SITE_NOME[l.site] || l.site, fmtBRL(l.valor)].filter(Boolean).join(" · "))}</small></button>`).join("") || `<small class="texto-ajuda">Nenhum lote encontrado. Tente só o bairro, a cidade ou o nº do lote.</small>`;
   }
   function iniciar() {
     if (iniciado) return;
