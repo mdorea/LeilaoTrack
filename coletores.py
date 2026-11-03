@@ -925,8 +925,7 @@ def lj_detalhe(html):
     img = re.search(r'<meta[^>]+property="og:image"[^>]+content="([^"]+)"', html) or \
         re.search(r'<meta[^>]+content="([^"]+)"[^>]+property="og:image"', html)
     d["imagem"] = _html.unescape(img.group(1)) if img else ""
-    corte = re.search(r"Lotes que podem te interessar", t)
-    corpo = t[:corte.start()] if corte else t
+    corpo = t
     ini = corpo.find("Descrição do lote")
     topo = corpo
     pracas = []
@@ -940,7 +939,8 @@ def lj_detalhe(html):
         if v:
             pracas = [{"nome": "Praça única", "data": enc, "valor": v}]
     d["pracas"] = pracas
-    desc = corpo[ini:] if ini > 0 else corpo
+    kv = corpo.find("Valor atual")
+    desc = corpo[ini:kv] if 0 < ini < kv else (corpo[ini:ini + 6000] if ini > 0 else corpo[:6000])
     locs = re.findall(r"Localiza[çc][ãa]o\s+((?:R\.|Rua|Av\.?|Avenida|Al\.|Alameda|Tv\.|Travessa|Rod\.|Rodovia|Est\.|Estrada|Pra[çc]a|Largo|Via|Viela|Beco)[^|]{3,160}?),\s*([^,]{2,60}),\s*([A-Z]{2})\b", desc)
     if locs:
         rua, cidade, uf = locs[-1]
