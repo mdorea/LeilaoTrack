@@ -1,25 +1,17 @@
-import sys, re, html as H
-sys.path.insert(0, ".")
-import coletores
-def nota(t): print("::notice title=lj::" + t[:1650], flush=True)
-h = coletores.Http(pausa=2.5, timeout=30)
-B = "https://www.lancejudicial.com.br"
-def limpo(d):
-    d = re.sub(r"<(script|style|svg|noscript)[^>]*>.*?</\1>", "", d, flags=re.S)
-    d = re.sub(r"<!--.*?-->", "", d, flags=re.S)
-    d = re.sub(r"<(\w+)((?:\s+[\w:-]+=\"[^\"]*\")*)\s*/?>", lambda m: "<" + m.group(1) + "".join(" " + a for a in re.findall(r'\b(class|id|itemprop|href)="[^"]{0,60}"', m.group(2)) ) + ">", d)
-    return re.sub(r"\s+", " ", d)
-def txt(d): return re.sub(r"\s+", " ", H.unescape(re.sub(r"<(script|style)[^>]*>.*?</\1>|<[^>]+>", " ", d, flags=re.S)))
-pag = {}
-for cat in ("casas", "apartamentos"):
-    t = h.get(f"{B}/imoveis/{cat}")
-    pag[cat] = list(dict.fromkeys(re.findall(r'href="(https://www\.(?:lancejudicial|grupolance)\.com\.br/[a-z]{2}/[^"/]+/imoveis/%s/[^"?#]+)"' % cat, t)))
-    nota(f"{cat}: {len(pag[cat])} links; lista simples: " + limpo(t[t.find(pag[cat][1]) - 300: t.find(pag[cat][1]) + 1400])[:1200])
-u = pag["casas"][1]
-d = h.get(u); nota("URL " + u)
-s = limpo(d); i = s.find("<h1")
-for k in range(3):
-    nota(f"casa HTML[{k}]: " + s[i + k * 1600: i + (k + 1) * 1600])
-for cat, k in (("casas", 2), ("casas", 3), ("apartamentos", 1), ("apartamentos", 2)):
-    u = pag[cat][k]; x = txt(h.get(u)); j = x.find("Descrição do lote")
-    nota(f"{cat}#{k} {u.split('/')[-1]} :: " + x[j:j + 1100])
+import sys, json, os, collections
+import coletores as c
+def nota(t): print("::notice::" + t.replace("\n", " %0A ")[:3500])
+log = lambda m: nota("LOG " + m)
+try:
+    http = c.Http(pausa=2.5)
+    lotes, ok = c.coletar_lancejudicial(http, log, anteriores={})
+    nota(f"TOTAL {len(lotes)} ok={ok}")
+    cont = collections.Counter((l["tipo"], l["uf"]) for l in lotes)
+    nota("TIPO/UF " + str(dict(cont)))
+    nota("SEM rua=%d sem imagem=%d sem bairro=%d sem valor=%d 2pracas=%d" % (
+        sum(not l["endereco"] for l in lotes), sum(not l["imagem"] for l in lotes),
+        sum(not l["bairro"] for l in lotes), sum(not l["valor"] for l in lotes), sum(len(l["pracas"]) > 1 for l in lotes)))
+    for l in lotes[:6] + lotes[-4:]:
+        nota(json.dumps({k: l.get(k) for k in ("id","titulo","tipo","bairro","cidade","uf","endereco","valor","referencia","desconto","praca_atual","encerra","comitente","ocupacao","area_constr","area_terreno","imagem")}, ensure_ascii=False))
+except Exception as e:
+    import traceback; nota("ERRO " + traceback.format_exc()[-1500:])
