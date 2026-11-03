@@ -823,10 +823,20 @@ _LJ_ABREV = [(r"^R\.\s*", "Rua "), (r"^Av\.?\s+", "Avenida "), (r"^Al\.\s*", "Al
 _LJ_FEATURE = re.compile(r"\b(quartos?|su[íi]tes?|vagas?|andar|banheiros?|dormit[óo]rios?|salas?|cozinha)\b|\d\s*m[²2]|^\s*(AT|AU|AC)\b", re.I)
 
 
+_LJ_LIXO = re.compile(r"^\W*\d|\bm[²2]\b|\bha\b|%|^(a\.?\s?[tuc]\b|at\b|au\b|ac\b)|^(apt|apto|ap\.|apartamento|bloco|torre|casa|cs\.?|lote|quadra|sala|conj|n[º°])\b", re.I)
+
+
+def _lj_bairro(x):
+    x = re.sub(r"^(Bairro|Bº)\s+", "", (x or "").strip(), flags=re.I).strip(" -,.")
+    return "" if (not x or _LJ_LIXO.search(x) or len(x) > 60) else x
+
+
 def _lj_rua(s):
-    s = re.sub(r"\s+", " ", s or "").strip(" ,.-")
+    s = re.sub(r"\s+", " ", s or "")
+    s = re.sub(r"\s*[-–]\s*(?=,|$)", "", s).strip(" ,.-")
     for rx, rep in _LJ_ABREV:
         s = re.sub(rx, rep, s, flags=re.I)
+    s = re.sub(r"^(Rua|Avenida|Alameda|Travessa|Rodovia|Estrada|Praça)\s+\1\b\s*", r"\1 ", s, flags=re.I)
     return s
 
 
@@ -885,12 +895,14 @@ def lj_titulo(tit_site, cat, rua="", bairro_det=""):
         rotulo = "Apartamento" if cat == "apartamentos" else "Casa"
         if partes and re.match(r"^(casa|sobrado|apartamento|cobertura|kitnet|flat|studio)", partes[0], re.I):
             rotulo = re.split(r"\s+", partes[0])[0].capitalize()
-            if rotulo.lower() in ("cobertura", "kitnet", "flat", "studio"):
-                rotulo = rotulo
+            if rotulo.lower() == "apartamentos":
+                rotulo = "Apartamento"
     feat = [x for x in resto if _LJ_FEATURE.search(x)]
     livres = [x for x in resto if x not in feat]
-    bairro = bairro_det or (livres[-1] if livres else "")
+    bairro = _lj_bairro(bairro_det) or _lj_bairro(livres[-1] if livres else "")
     area, _ = area_m2(" ".join(feat))
+    if area and (area < 20 or (cat == "apartamentos" and area > 800)):
+        area = None  # o anúncio mistura fração ideal/terreno: melhor não afirmar área
     vagas = ""
     for x in feat:
         mv = re.search(r"(\d+)\s*vagas?", x, re.I)
@@ -913,7 +925,7 @@ def lj_detalhe(html):
     img = re.search(r'<meta[^>]+property="og:image"[^>]+content="([^"]+)"', html) or \
         re.search(r'<meta[^>]+content="([^"]+)"[^>]+property="og:image"', html)
     d["imagem"] = _html.unescape(img.group(1)) if img else ""
-    corte = re.search(r"(Lotes que podem te interessar|Veja tamb[ée]m)", t)
+    corte = re.search(r"Lotes que podem te interessar", t)
     corpo = t[:corte.start()] if corte else t
     ini = corpo.find("Descrição do lote")
     topo = corpo
@@ -935,10 +947,12 @@ def lj_detalhe(html):
         pr = [x.strip() for x in rua.split(",")]
         _num = r"(?:n[º°o]\.?\s*)?\d+[A-Za-z]?|s/?n"
         if len(pr) >= 3 and re.fullmatch(_num, pr[1], re.I):
-            d["bairro"] = ", ".join(pr[2:])
+            cand = [x for x in (_lj_bairro(y) for y in pr[2:]) if x]
+            d["bairro"] = cand[-1] if cand else ""
             rua = ", ".join(pr[:2])
         elif len(pr) >= 2 and not re.fullmatch(_num, pr[1], re.I):
-            d["bairro"] = ", ".join(pr[1:])
+            cand = [x for x in (_lj_bairro(y) for y in pr[1:]) if x]
+            d["bairro"] = cand[-1] if cand else ""
             rua = pr[0]
         d["rua"] = _lj_rua(rua)
         d["cidade"], d["uf"] = cidade.strip(), uf
@@ -1017,6 +1031,9 @@ def coletar_lancejudicial(http, log, anteriores=None, limite=4000, completo=True
         for k in ("area_constr", "area_terreno"):
             if det.get(k):
                 l[k] = det[k]
+        for k in ("area_constr", "area_terreno"):
+            if l.get(k) and l[k] < 20:
+                del l[k]
         if area and not l.get("area_constr") and tipo == "Apartamento":
             l["area_constr"] = area
         if det.get("av"):
