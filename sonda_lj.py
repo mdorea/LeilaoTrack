@@ -1,22 +1,17 @@
-import re
+import json, collections
 import coletores as c
 def nota(t): print("::notice::" + t.replace("\n", " %0A ")[:3800])
+logs = []
 try:
     http = c.Http(pausa=2.5)
-    B = "https://www.lancejudicial.com.br/imoveis/casas"
-    for q in ("?pagina=2", "?pagina=3"):
-        h2 = http.get(B + q)
-        ids = re.findall(r'data-key="(\d+)"', h2)
-        nota(f"{q}: {len(ids)} cards {ids[:3]}...{ids[-2:]}")
-    h = http.get(B)
-    nota("TOTAIS " + str(re.findall(r"(?:Casas|Apartamentos|Im[óo]veis)\s*(\d+)", c.texto(h)))[:200] + " cards=" + str(len(re.findall(r'data-key="(\d+)"', h))))
-    d = http.get("https://www.grupolance.com.br/sp/itanhaem/imoveis/casas/imovel-residencial-125m2-itanhaem-sp-28950")
-    t = c.texto(d)
-    k = t.find("Valor atual")
-    nota("TEXTO_DET k=%d " % k + t[max(0, k-200):k+700])
-    k = t.find("1ª Praça")
-    nota("PRACA k=%d " % k + t[max(0, k-300):k+500])
-    i = d.find("Encerramento")
-    nota("HTML_ENC " + re.sub(r"\s+", " ", d[max(0, i-600):i+500]))
+    lotes, ok = c.coletar_lancejudicial(http, logs.append, anteriores={})
+    cont = collections.Counter((l["tipo"], l["uf"]) for l in lotes)
+    nota(f"TOTAL {len(lotes)} ok={ok} | " + " | ".join(logs) + " | " + str(dict(cont)))
+    nota("SEM rua=%d imagem=%d bairro=%d valor=%d encerra=%d | 2pracas=%d area_constr=%d" % (
+        sum(not l["endereco"] for l in lotes), sum(not l["imagem"] for l in lotes), sum(not l["bairro"] for l in lotes),
+        sum(not l["valor"] for l in lotes), sum(not l["encerra"] for l in lotes), sum(len(l["pracas"]) > 1 for l in lotes),
+        sum(bool(l.get("area_constr")) for l in lotes)))
+    nota("TITULOS " + " || ".join(f'{l["titulo"]} [{l["comitente"]}, R$ {l["valor"]}, {l["desconto"]}%, {l["encerra"]}]' for l in lotes[:14]))
+    nota("TITULOS2 " + " || ".join(l["titulo"] for l in lotes[14:60]))
 except Exception as e:
     import traceback; nota("ERRO " + traceback.format_exc()[-1500:])
