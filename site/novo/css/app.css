@@ -528,3 +528,8 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .ca-res .foto{width:52px;height:52px;border-radius:11px;flex:none}
 .ca-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .ca-txt b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* lote que saiu do site */
+.card.saiu .foto,.det-foto.saiu{filter:grayscale(1) contrast(.95);opacity:.75}
+.card.saiu .tit,.card.saiu .preco{opacity:.7}
+.aviso-saiu{margin:3px 0 2px;padding-right:30px;font-size:11.5px;font-weight:600;color:var(--hot);line-height:1.35}

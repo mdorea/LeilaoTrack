@@ -215,15 +215,24 @@ function render() {
   if (!S.lista.length) $("#grade").innerHTML = `<div class="vazio vidro">${!S.lotes.length ? "Ainda não há lotes. A primeira leitura dos sites pode levar alguns minutos." : S.aba === "favoritos" ? "Toque no ♡ de um lote para acompanhá-lo aqui." : top ? "Nenhum lote do seu perfil entrou no ranking agora. Toque em <b>Ajustar</b> para ampliar estados ou tipos." : "Nenhum lote com esses filtros."}</div>`;
 }
 const coracao = on => `<svg width="19" height="19" viewBox="0 0 24 24" fill="${on ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>`;
+/* lote que saiu do site: aviso + imagem em preto e branco; some dos favoritos 30 dias depois */
+function avisoSaiu(l) {
+  if (l.ativo !== false || !l.saiu) return "";
+  const dias = Math.max(0, Math.floor((Date.now() - new Date(l.saiu).getTime()) / 864e5)), restam = Math.max(0, 30 - dias);
+  const quando = dias === 0 ? "hoje" : dias === 1 ? "há 1 dia" : `há ${dias} dias`;
+  return `Saiu do site ${quando}. Sai dos favoritos em ${restam} ${restam === 1 ? "dia" : "dias"}.`;
+}
+
 function card(l) {
   const urg = l._enc - Date.now() < 48 * 36e5;
   const t = S.top && S.top.get(l.id);
   const desc = l._desc || 0;
-  return `<button class="card vidro" data-id="${esc(l.id)}">
+  return `<button class="card vidro${l.ativo === false ? " saiu" : ""}" data-id="${esc(l.id)}">
     ${foto(l)}
     <div class="info">
       <div>
-        <div class="topo-card">${t ? `<span class="rank">#${t.pos}</span>` : ""}<i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(l.site)}${l.novo ? '<span class="novo">· novo</span>' : ""}${!l.ativo ? " · saiu do site" : ""}</div>
+        <div class="topo-card">${t ? `<span class="rank">#${t.pos}</span>` : ""}<i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(l.site)}${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
+        ${l.ativo === false ? `<div class="aviso-saiu">${esc(avisoSaiu(l) || "Saiu do site")}</div>` : ""}
         <div class="tit">${esc(l.titulo)}</div>
         ${t ? `<div class="motivo">${esc(t.motivos.slice(0, 2).join(" · "))}</div>` : ""}
         ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}
@@ -505,9 +514,10 @@ function abrirLote(id) {
   const desc = Math.round(Number(l.desconto) || 0);
   const ev = S.eventos.filter(e => e.id === id).slice(0, 50);
   $("#corpo-lote").innerHTML = `
-    <div class="det-foto" style="background:${grad(l.id)}">${src ? `<img referrerpolicy="no-referrer" src="${esc(src)}" alt="">` : `<div style="display:grid;place-items:center;height:100%">${CASA.replace("42%", "90")}</div>`}</div>
+    <div class="det-foto${l.ativo === false ? " saiu" : ""}" style="background:${grad(l.id)}">${src ? `<img referrerpolicy="no-referrer" src="${esc(src)}" alt="">` : `<div style="display:grid;place-items:center;height:100%">${CASA.replace("42%", "90")}</div>`}</div>
     <div class="det-site"><i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i><span style="color:${SITE_COR[l.site] || "inherit"}">${esc(SITE_NOME[l.site] || l.site)}</span>${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
     <h3 class="det-tit">${esc(l.titulo)}</h3>
+    ${l.ativo === false ? `<p class="aviso-caixa ruim">${esc(avisoSaiu(l) || "Este lote saiu do site.")} Confira no site do leiloeiro se foi vendido ou retirado.</p>` : ""}
     <div class="det-end">${esc(enderecoTexto(l))}</div>
     <button class="btn-maps vidro" id="compartilhar" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>Compartilhar</button>
     ${linkMaps(l) ? `<a class="btn-maps vidro" href="${esc(linkMaps(l))}" target="_blank" rel="noopener noreferrer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Ver no Google Maps</a>` : ""}
