@@ -623,7 +623,7 @@ function renderAlertas() {
       const d = new Date(e.quando).toLocaleDateString("pt-BR", {weekday: "long", day: "numeric", month: "long"});
       if (d !== dia) { dia = d; out.push(`<div class="dia">${esc(d.charAt(0).toUpperCase() + d.slice(1))}</div>`); }
       const l = e.lote, novo = e.quando > visto;
-      out.push(`<button class="ev vidro ${novo ? "nao-lido" : ""}" data-id="${esc(e.id)}">${foto({id: e.id, imagem: l.imagem})}<div style="min-width:0;flex:1"><p><span class="tag">${esc(nomes[e.tipo] || e.tipo)}</span>${ehFav(e) ? "♥ " : ""}${esc(l.titulo)}</p><small>${esc(e.tipo === "novo" ? `${l.site} · ${l.cidade || ""}/${l.uf || ""} · ${fmtBRL(l.valor)}` : e.texto)} · ${esc(new Date(e.quando).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"}))}</small></div>${novo ? '<i class="ponto" aria-label="não lido"></i>' : ""}</button>`);
+      out.push(`<button class="ev vidro ${novo ? "nao-lido" : ""}" data-id="${esc(e.id)}">${foto({id: e.id, imagem: l.imagem})}<div style="min-width:0;flex:1"><p><span class="tag">${esc(nomes[e.tipo] || e.tipo)}</span>${ehFav(e) ? "♥ " : ""}${esc(l.titulo)}</p><small>${esc(e.tipo === "novo" ? `${siteCurto(l.site)} · ${l.cidade || ""}/${l.uf || ""} · ${fmtBRL(l.valor)}` : e.texto)} · ${esc(new Date(e.quando).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"}))}</small></div>${novo ? '<i class="ponto" aria-label="não lido"></i>' : ""}</button>`);
     }
     box.innerHTML = out.join("");
   }
