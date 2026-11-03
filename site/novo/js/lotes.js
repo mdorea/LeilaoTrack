@@ -232,7 +232,7 @@ function card(l) {
     ${foto(l)}
     <div class="info">
       <div>
-        <div class="topo-card">${t ? `<span class="rank">#${t.pos}</span>` : ""}<i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(l.site)}${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
+        <div class="topo-card">${t ? `<span class="rank">#${t.pos}</span>` : ""}<i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(siteCurto(l.site))}${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
         ${l.ativo === false ? `<div class="aviso-saiu">${esc(avisoSaiu(l, true) || "Saiu do site")}</div>` : ""}
         <div class="tit">${esc(l.titulo)}</div>
         ${t ? `<div class="motivo">${esc(t.motivos.slice(0, 2).join(" · "))}</div>` : ""}
@@ -305,7 +305,7 @@ function renderChips() {
   const f = S.filtro; const c = [];
   const rem = (k, v, t) => c.push(`<button class="chip on" data-rem="${k}" data-v="${esc(v)}">${esc(t)} <span class="x">×</span></button>`);
   f.tipos.forEach(t => rem("tipos", t, t)); f.ufs.forEach(t => rem("ufs", t, t)); f.cidades.forEach(t => rem("cidades", t, t.split("/")[0]));
-  f.sites.forEach(t => rem("sites", t, t)); f.pracas.forEach(t => rem("pracas", t, t)); f.ocup.forEach(t => rem("ocup", t, t));
+  f.sites.forEach(t => rem("sites", t, siteCurto(t))); f.pracas.forEach(t => rem("pracas", t, t)); f.ocup.forEach(t => rem("ocup", t, t));
   if (f.vmin || (f.vmax && f.vmax < VMAX)) rem("valor", "", f.vmin && f.vmax && f.vmax < VMAX ? `${fmtCurto(f.vmin)}–${fmtCurto(f.vmax).replace("R$ ", "")}` : f.vmin ? `a partir de ${fmtCurto(f.vmin)}` : `até ${fmtCurto(f.vmax)}`);
   if (f.dmin) rem("dmin", "", `${f.dmin}%+ off`);
   if (f.prazo) rem("prazo", "", {hoje: "Fecha hoje", "7": "Até 7 dias", "30": "Até 30 dias"}[f.prazo]);
@@ -355,7 +355,7 @@ $("#btn-filtros").addEventListener("click", () => { S.rascunho = JSON.parse(JSON
 function contar(arr, fn) { const m = new Map(); arr.forEach(l => { const k = fn(l); if (k) m.set(k, (m.get(k) || 0) + 1); }); return [...m.entries()].sort((a, b) => b[1] - a[1]); }
 function grupo(titulo, chave, opcoes) {
   const f = S.rascunho;
-  return `<div class="sec">${titulo}</div><div class="chips wrap">${opcoes.map(([v, n]) => `<button class="chip ${f[chave].includes(v) ? "on" : "vidro"}" data-k="${chave}" data-v="${esc(v)}">${esc(String(v).split("/")[0])}${n != null ? ` <small style="opacity:.6">${n}</small>` : ""}</button>`).join("")}</div>`;
+  return `<div class="sec">${titulo}</div><div class="chips wrap">${opcoes.map(([v, n]) => `<button class="chip ${f[chave].includes(v) ? "on" : "vidro"}" data-k="${chave}" data-v="${esc(v)}">${esc(chave === "sites" ? siteCurto(v) : String(v).split("/")[0])}${n != null ? ` <small style="opacity:.6">${n}</small>` : ""}</button>`).join("")}</div>`;
 }
 function renderFiltros() {
   const f = S.rascunho; const vivos = S.lotes.filter(l => l.ativo && !l.encerrado);
