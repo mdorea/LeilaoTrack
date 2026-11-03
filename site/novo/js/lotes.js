@@ -216,11 +216,12 @@ function render() {
 }
 const coracao = on => `<svg width="19" height="19" viewBox="0 0 24 24" fill="${on ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>`;
 /* lote que saiu do site: aviso + imagem em preto e branco; some dos favoritos 30 dias depois */
-function avisoSaiu(l) {
+function avisoSaiu(l, curto) {
   if (l.ativo !== false || !l.saiu) return "";
   const dias = Math.max(0, Math.floor((Date.now() - new Date(l.saiu).getTime()) / 864e5)), restam = Math.max(0, 30 - dias);
   const quando = dias === 0 ? "hoje" : dias === 1 ? "há 1 dia" : `há ${dias} dias`;
-  return `Saiu do site ${quando}. Sai dos favoritos em ${restam} ${restam === 1 ? "dia" : "dias"}.`;
+  const resta = `${restam} ${restam === 1 ? "dia" : "dias"}`;
+  return curto ? `Saiu ${quando} · some em ${resta}` : `Saiu do site ${quando}. Sai dos favoritos em ${resta}.`;
 }
 
 function card(l) {
@@ -232,7 +233,7 @@ function card(l) {
     <div class="info">
       <div>
         <div class="topo-card">${t ? `<span class="rank">#${t.pos}</span>` : ""}<i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(l.site)}${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
-        ${l.ativo === false ? `<div class="aviso-saiu">${esc(avisoSaiu(l) || "Saiu do site")}</div>` : ""}
+        ${l.ativo === false ? `<div class="aviso-saiu">${esc(avisoSaiu(l, true) || "Saiu do site")}</div>` : ""}
         <div class="tit">${esc(l.titulo)}</div>
         ${t ? `<div class="motivo">${esc(t.motivos.slice(0, 2).join(" · "))}</div>` : ""}
         ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}

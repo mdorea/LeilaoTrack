@@ -529,7 +529,10 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .ca-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .ca-txt b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* lote que saiu do site */
-.card.saiu .foto,.det-foto.saiu{filter:grayscale(1) contrast(.95);opacity:.75}
-.card.saiu .tit,.card.saiu .preco{opacity:.7}
-.aviso-saiu{margin:3px 0 2px;padding-right:30px;font-size:11.5px;font-weight:600;color:var(--hot);line-height:1.35}
+/* lote que saiu do site: foto em preto e branco com faixa escura, e uma linha discreta */
+.card.saiu .foto,.det-foto.saiu{filter:grayscale(1)}
+.card.saiu .foto img,.det-foto.saiu img{opacity:.7}
+.card.saiu .foto::after,.det-foto.saiu::after{content:"SAIU DO SITE";position:absolute;left:0;right:0;bottom:0;padding:5px 0;text-align:center;background:rgba(30,22,64,.88);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.8px}
+.det-foto{position:relative}.det-foto.saiu::after{font-size:12px;padding:8px 0;letter-spacing:1.2px}
+.card.saiu .tit,.card.saiu .preco{opacity:.72}
+.aviso-saiu{margin:1px 0 3px;font-size:10.5px;font-weight:500;color:var(--mu);line-height:1.3}
