@@ -399,7 +399,7 @@ def main():
                 l["bairro"], l["cidade"], l["uf"] = loc
     estado = ant.get("estado", {}) or {}
     sites_info = estado.get("sites", {}) or {}
-    pausas = {"Mega": 1.5, "Frazão": 1.5, "Zuk": 4.0, "Biasi": 1.5}
+    pausas = {"Mega": 1.5, "Frazão": 1.5, "Zuk": 4.0, "Biasi": 1.5, "Lance Judicial": 2.5}
     novos_alerta = []
 
     for site, func in coletores.SITES.items():
@@ -415,7 +415,7 @@ def main():
         ini = time.time()
         try:
             http = coletores.Http(pausa=pausas.get(site, 1.5))
-            if site in ("Biasi", "Frazão"):
+            if site in ("Biasi", "Frazão", "Lance Judicial"):
                 lidos, completo = func(http, log, anteriores=lotes)
             elif site == "Mega":
                 cats = ("imoveis", "veiculos") if CFG.get("incluir_veiculos") else ("imoveis",)

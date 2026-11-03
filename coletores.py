@@ -815,9 +815,242 @@ def coletar_biasi(http, log, anteriores=None, limite=4000, completo=True):
     return list(lotes.values()), ok
 
 
+# ---------------------------------------------------------------- Lance Judicial (Grupo Lance)
+LJ = "https://www.lancejudicial.com.br"
+LJ_DETALHES_POR_LEITURA = 150
+_LJ_ABREV = [(r"^R\.\s*", "Rua "), (r"^Av\.?\s+", "Avenida "), (r"^Al\.\s*", "Alameda "), (r"^Tv\.\s*", "Travessa "),
+             (r"^Rod\.\s*", "Rodovia "), (r"^Est\.\s*", "Estrada "), (r"^Pç\.?\s*", "Praça ")]
+_LJ_FEATURE = re.compile(r"\b(quartos?|su[íi]tes?|vagas?|andar|banheiros?|dormit[óo]rios?|salas?|cozinha)\b|\d\s*m[²2]|^\s*(AT|AU|AC)\b", re.I)
+
+
+_LJ_LIXO = re.compile(r"^\W*\d|\bm[²2]\b|\bha\b|%|^(a\.?\s?[tuc]\b|at\b|au\b|ac\b)|^(apt|apto|ap\.|apartamento|bloco|torre|casa|cs\.?|lote|quadra|sala|conj|n[º°])\b", re.I)
+
+
+def _lj_bairro(x):
+    x = re.sub(r"^(Bairro|Bº)\s+", "", (x or "").strip(), flags=re.I).strip(" -,.")
+    return "" if (not x or _LJ_LIXO.search(x) or len(x) > 60) else x
+
+
+def _lj_rua(s):
+    s = re.sub(r"\s+", " ", s or "")
+    s = re.sub(r"\s*[-–]\s*(?=,|$)", "", s).strip(" ,.-")
+    for rx, rep in _LJ_ABREV:
+        s = re.sub(rx, rep, s, flags=re.I)
+    s = re.sub(r"^(Rua|Avenida|Alameda|Travessa|Rodovia|Estrada|Praça)\s+\1\b\s*", r"\1 ", s, flags=re.I)
+    return s
+
+
+def lj_parse_lista(html, cat):
+    """Cartões da lista de uma categoria (casas/apartamentos): link, título, valor, praças, judicial/extrajudicial."""
+    ordem = []
+    for b in html.split('<div class="card-item')[1:]:
+        k = re.search(r'data-key="(\d+)"', b)
+        t = re.search(r'class="card-title"\s+href="([^"]+)"[^>]*>(.*?)</a>', b, re.S)
+        if not k or not t:
+            continue
+        href = _html.unescape(t.group(1))
+        m = re.match(r"(?:https?://[^/]+)?/([a-z]{2})/[^/]+/imoveis/" + cat + r"/", href)
+        if not m:
+            continue
+        url = href if href.startswith("http") else "https://www.grupolance.com.br" + href
+        pracas = []
+        for mm in re.finditer(r'badge[^"]*">\s*(\d)ª\s*Praça\s*</span>.*?<li>([^<]*)</li>\s*<li>([^<]*)</li>\s*<li[^>]*>\s*(R\$[^<]*)<', b, re.S):
+            v = dinheiro(mm.group(4))
+            if v:
+                pracas.append({"nome": f"{mm.group(1)}ª praça", "data": data_iso(mm.group(3)), "valor": v})
+        corpo = texto(b)
+        ordem.append({
+            "url": url, "uf_url": m.group(1).upper(), "lid": k.group(1), "titulo_site": texto(t.group(2)),
+            "pracas": pracas, "valor_lista": dinheiro(corpo),
+            "tag": "Extrajudicial" if re.search(r">\s*Extrajudicial\s*<", b) else ("Judicial" if re.search(r">\s*Judicial\s*<", b) else "")})
+    return ordem
+
+
+def lj_titulo(tit_site, cat, rua="", bairro_det=""):
+    """('Casa 161 m² - Rua X, 249 - Bairro - Cidade - SP', tipo, bairro, cidade, uf, area) no mesmo padrão dos outros sites."""
+    partes = [p.strip() for p in (tit_site or "").split(",") if p.strip()]
+    cidade = uf = bairro = ""
+    if partes:
+        m = re.search(r"^(.*?)\s*/\s*([A-Z]{2})\s*$", partes[-1])
+        if m:
+            cidade, uf = m.group(1).strip(), m.group(2)
+            partes = partes[:-1] if len(partes) > 1 else [partes[0]]
+        elif len(partes) > 1 and re.fullmatch(r"[A-Z]{2}", partes[-1]):
+            uf = partes[-1]
+            partes = partes[:-1]
+    mc = re.match(r"^(\d+\s+(?:casas|apartamentos))\s+em\s+(.+)$", cidade, re.I)
+    if mc:
+        partes = [mc.group(1)]
+        cidade = mc.group(2).strip()
+    rotulo = partes[0] if partes else ""
+    multi = re.match(r"^(\d+)\s+(casas|apartamentos)\b", rotulo, re.I)
+    if multi:
+        m2 = re.search(r"\s+em\s+(.+)$", rotulo)
+        if m2 and not cidade:
+            cidade = m2.group(1).strip()
+        rotulo = f"{multi.group(1)} {multi.group(2).lower()}"
+        resto = []
+    else:
+        resto = partes[1:]
+        rotulo = "Apartamento" if cat == "apartamentos" else "Casa"
+        if partes and re.match(r"^(casa|sobrado|apartamento|cobertura|kitnet|flat|studio)", partes[0], re.I):
+            rotulo = re.split(r"\s+", partes[0])[0].capitalize()
+            if rotulo.lower() == "apartamentos":
+                rotulo = "Apartamento"
+    feat = [x for x in resto if _LJ_FEATURE.search(x)]
+    livres = [x for x in resto if x not in feat]
+    bairro = _lj_bairro(bairro_det) or _lj_bairro(livres[-1] if livres else "")
+    area, _ = area_m2(" ".join(feat))
+    if area and (area < 20 or (cat == "apartamentos" and area > 800)):
+        area = None  # o anúncio mistura fração ideal/terreno: melhor não afirmar área
+    vagas = ""
+    for x in feat:
+        mv = re.search(r"(\d+)\s*vagas?", x, re.I)
+        if mv:
+            vagas = f" ({int(mv.group(1)):02d} vaga{'s' if int(mv.group(1)) > 1 else ''})"
+    tipo = "Apartamento" if cat == "apartamentos" else "Casa"
+    ar_txt = f" {str(area).rstrip('0').rstrip('.').replace('.', ',')} m²" if area else ""
+    cabeca = f"{rotulo[0].upper() + rotulo[1:]}{ar_txt}{vagas}"
+    seg = [cabeca] + [x for x in (rua, bairro, cidade, uf) if x]
+    return " - ".join(seg), tipo, bairro, cidade, uf, area
+
+
+def lj_detalhe(html):
+    """Página do lote: valores, praças, endereço exato, imagem. None = lote que não vale (Comprei/PGFN)."""
+    t = texto(html)
+    d = {"v": 1}
+    if re.search(r"comprei\.pgfn\.gov\.br|LANCES OFERTADOS AQUI N[ÃA]O S[ÃA]O V[ÁA]LIDOS", t, re.I):
+        d["comprei"] = True
+        return d
+    img = re.search(r'<meta[^>]+property="og:image"[^>]+content="([^"]+)"', html) or \
+        re.search(r'<meta[^>]+content="([^"]+)"[^>]+property="og:image"', html)
+    d["imagem"] = _html.unescape(img.group(1)) if img else ""
+    corpo = t
+    ini = corpo.find("Descrição do lote")
+    topo = corpo
+    pracas = []
+    d["av"] = dinheiro((re.search(r"Valor de avalia[çc][ãa]o\s*(R\$\s*[\d\.]+,\d{2})", topo) or [None, ""])[1])
+    atual = dinheiro((re.search(r"Valor atual\s*(R\$\s*[\d\.]+,\d{2})", topo) or [None, ""])[1])
+    inicial = dinheiro((re.search(r"(R\$\s*[\d\.]+,\d{2})\s*\(Valor inicial\)", topo) or [None, ""])[1])
+    enc = data_iso((re.search(r"Encerramento do leil[ãa]o\s*(\d{2}/\d{2}/\d{4}[^R]{0,20})", topo) or [None, ""])[1])
+    d["enc"] = enc
+    if not pracas:
+        v = atual or inicial
+        if v:
+            pracas = [{"nome": "Praça única", "data": enc, "valor": v}]
+    d["pracas"] = pracas
+    kv = corpo.find("Valor atual")
+    desc = corpo[ini:kv] if 0 < ini < kv else (corpo[ini:ini + 6000] if ini > 0 else corpo[:6000])
+    locs = re.findall(r"Localiza[çc][ãa]o\s+((?:R\.|Rua|Av\.?|Avenida|Al\.|Alameda|Tv\.|Travessa|Rod\.|Rodovia|Est\.|Estrada|Pra[çc]a|Largo|Via|Viela|Beco)[^|]{3,160}?),\s*([^,]{2,60}),\s*([A-Z]{2})\b", desc)
+    if locs:
+        rua, cidade, uf = locs[-1]
+        pr = [x.strip() for x in rua.split(",")]
+        _num = r"(?:n[º°o]\.?\s*)?\d+[A-Za-z]?|s/?n"
+        if len(pr) >= 3 and re.fullmatch(_num, pr[1], re.I):
+            cand = [x for x in (_lj_bairro(y) for y in pr[2:]) if x]
+            d["bairro"] = cand[-1] if cand else ""
+            rua = ", ".join(pr[:2])
+        elif len(pr) >= 2 and not re.fullmatch(_num, pr[1], re.I):
+            cand = [x for x in (_lj_bairro(y) for y in pr[1:]) if x]
+            d["bairro"] = cand[-1] if cand else ""
+            rua = pr[0]
+        d["rua"] = _lj_rua(rua)
+        d["cidade"], d["uf"] = cidade.strip(), uf
+    d["desc"] = desc[:3000]
+    d.update(areas_de(desc))
+    if re.search(r"desocupad", desc, re.I):
+        d["ocupacao"] = "Desocupado"
+    elif re.search(r"\bocupad[oa]s?\b", desc, re.I) and not re.search(r"n[ãa]o foi poss[íi]vel verificar", desc, re.I):
+        d["ocupacao"] = "Ocupado"
+    return d
+
+
+def coletar_lancejudicial(http, log, anteriores=None, limite=4000, completo=True):
+    anteriores = anteriores or {}
+    achados = {}
+    esperado = {}
+    ok = True
+    for cat in ("casas", "apartamentos"):
+        for pag in range(1, 8):
+            url = f"{LJ}/imoveis/{cat}" + (f"?pagina={pag}" if pag > 1 else "")
+            try:
+                h = http.get(url)
+            except Bloqueado:
+                raise
+            except Exception as e:
+                log(f"Lance Judicial: falha na lista {cat} p{pag}: {e}")
+                ok = ok and pag > 1
+                break
+            ls = lj_parse_lista(h, cat)
+            novos = [l for l in ls if l["lid"] not in achados]
+            for l in novos:
+                l["cat"] = cat
+                achados[l["lid"]] = l
+            if pag == 1:
+                tot = re.search(r"%s\s+(\d+)" % ("Casas" if cat == "casas" else "Apartamentos"), texto(h))
+                esperado[cat] = int(tot.group(1)) if tot else 0
+            if not novos:
+                break
+        n = sum(1 for l in achados.values() if l["cat"] == cat)
+        log(f"Lance Judicial/{cat}: {n} lotes (site diz {esperado.get(cat)})")
+        if esperado.get(cat) and n < esperado[cat] * 0.9:
+            ok = False
+    agora = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    lotes, feitos, comprei = [], 0, 0
+    for lid, c in achados.items():
+        id_ = f"lj:{lid}"
+        ant = anteriores.get(id_) or {}
+        det = ant.get("_det")
+        datas = [p.get("data") for p in ant.get("pracas", []) if p.get("data")]
+        precisa = not det or det.get("v") != 1 or (datas and max(datas) < agora)
+        if precisa and feitos < LJ_DETALHES_POR_LEITURA:
+            try:
+                det = lj_detalhe(http.get(c["url"], {"Referer": LJ + "/"}))
+                feitos += 1
+            except Bloqueado:
+                raise
+            except Exception as e:
+                log(f"Lance Judicial: falha no lote {lid}: {e}")
+        det = det or {}
+        if det.get("comprei"):
+            comprei += 1
+            continue
+        titulo, tipo, bairro, cidade, uf, area = lj_titulo(c["titulo_site"], c["cat"], det.get("rua", ""), det.get("bairro", ""))
+        cidade = det.get("cidade") or cidade
+        uf = det.get("uf") or uf or c["uf_url"]
+        pracas = c.get("pracas") or det.get("pracas") or ([{"nome": "Praça única", "data": None, "valor": c["valor_lista"]}] if c.get("valor_lista") else [])
+        if not det and not pracas:
+            continue
+        l = {"id": id_, "site": "Lance Judicial", "url": c["url"], "codigo": lid,
+             "titulo": titulo, "endereco": det.get("rua", ""), "bairro": bairro, "cidade": cidade, "uf": uf,
+             "tipo": tipo, "tipo_site": "", "imagem": det.get("imagem", ""),
+             "area": area, "area_txt": f"{area} m²" if area else "", "pracas": pracas,
+             "ocupacao": det.get("ocupacao", ""), "comitente": c.get("tag", ""), "status": ""}
+        if det.get("rua"):
+            l["end_maps"] = endereco_maps(f"{det['rua']}, {cidade}, {uf}")
+        for k in ("area_constr", "area_terreno"):
+            if det.get(k):
+                l[k] = det[k]
+        for k in ("area_constr", "area_terreno"):
+            if l.get(k) and l[k] < 20:
+                del l[k]
+        if area and not l.get("area_constr") and tipo == "Apartamento":
+            l["area_constr"] = area
+        if det.get("av"):
+            l["avaliacao"] = det["av"]
+        if det:
+            l["_det"] = {k: v for k, v in det.items() if k != "desc"}
+        if len(pracas) == 1 and det.get("av") and pracas[0]["valor"] and pracas[0]["valor"] < det["av"]:
+            l["desconto"] = round((1 - pracas[0]["valor"] / det["av"]) * 100)
+        lotes.append(finalizar(l))
+    log(f"Lance Judicial: {len(lotes)} lotes ({comprei} do Comprei/PGFN ignorados), {feitos} páginas de detalhe")
+    return lotes, ok and bool(achados)
+
+
 SITES = {
     "Mega": coletar_mega,
     "Frazão": coletar_frazao,
     "Zuk": coletar_zuk,
     "Biasi": coletar_biasi,
+    "Lance Judicial": coletar_lancejudicial,
 }
