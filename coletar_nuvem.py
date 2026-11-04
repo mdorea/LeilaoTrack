@@ -399,7 +399,7 @@ def main():
                 l["bairro"], l["cidade"], l["uf"] = loc
     estado = ant.get("estado", {}) or {}
     sites_info = estado.get("sites", {}) or {}
-    pausas = {"Mega": 1.5, "Frazão": 1.5, "Zuk": 4.0, "Biasi": 1.5, "Lance Judicial": 2.5}
+    pausas = {"Mega": 1.5, "Frazão": 1.5, "Zuk": 4.0, "Biasi": 1.5, "Lance Judicial": 2.5, "Freitas": 2.0}
     novos_alerta = []
 
     for site, func in coletores.SITES.items():
@@ -415,7 +415,7 @@ def main():
         ini = time.time()
         try:
             http = coletores.Http(pausa=pausas.get(site, 1.5))
-            if site in ("Biasi", "Frazão", "Lance Judicial"):
+            if site in ("Biasi", "Frazão", "Lance Judicial", "Freitas"):
                 lidos, completo = func(http, log, anteriores=lotes)
             elif site == "Mega":
                 cats = ("imoveis", "veiculos") if CFG.get("incluir_veiculos") else ("imoveis",)
@@ -489,6 +489,23 @@ def main():
             info.update(status="erro", erro=str(e)[:300], quando=AGORA_S)
             log(f"{site}: ERRO {e}\n{traceback.format_exc()}")
 
+    # cidades sem acento (ex.: "SAO PAULO") ganham a grafia que os outros sites já usam, para o filtro de cidade não duplicar
+    def _sem_ac(x):
+        import unicodedata
+        return "".join(ch for ch in unicodedata.normalize("NFD", x or "") if unicodedata.category(ch) != "Mn").lower().strip()
+    grafia = {}
+    for l in lotes.values():
+        c0 = l.get("cidade") or ""
+        if c0 and l.get("site") not in ("Freitas",) and (any(ord(ch) > 127 for ch in c0) or (_sem_ac(c0), l.get("uf")) not in grafia):
+            grafia[(_sem_ac(c0), l.get("uf"))] = c0
+    for l in lotes.values():
+        if l.get("site") == "Freitas" and l.get("cidade"):
+            g = grafia.get((_sem_ac(l["cidade"]), l.get("uf")))
+            if g and not any(ord(ch) > 127 for ch in l["cidade"]):
+                velho = l["cidade"]
+                l["cidade"] = g
+                l["titulo"] = l["titulo"].replace(f" - {velho} - ", f" - {g} - ")
+                l["end_maps"] = (l.get("end_maps") or "").replace(velho, g)
     # tira os tipos que você não quer acompanhar (config.json > tipos_excluidos)
     excluir = set(CFG.get("tipos_excluidos", []))
     for i in [i for i, l in lotes.items() if l.get("tipo") in excluir]:

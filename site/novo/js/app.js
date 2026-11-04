@@ -217,8 +217,8 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#beta-
 /* só para o admin: um resumo simples para saber se os lotes estão em dia */
 function painelAtualizacao(est) {
   const hm = d => new Date(d).toLocaleString("pt-BR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
-  const limiteH = {Zuk: 3.5, "Frazão": 2.5, Mega: 2.5, Biasi: 2.5, "Lance Judicial": 2.5};
-  const linhas = ["Zuk", "Frazão", "Mega", "Biasi", "Lance Judicial"].map(site => {
+  const limiteH = {Zuk: 3.5, "Frazão": 2.5, Mega: 2.5, Biasi: 2.5, "Lance Judicial": 2.5, Freitas: 2.5};
+  const linhas = ["Zuk", "Frazão", "Mega", "Biasi", "Lance Judicial", "Freitas"].map(site => {
     const i = (est.sites || {})[site] || {};
     const horas = i.quando ? (Date.now() - new Date(i.quando).getTime()) / 36e5 : Infinity;
     const estado = i.status && i.status !== "ok" ? "erro" : horas > limiteH[site] ? "atrasado" : "ok";
@@ -233,7 +233,7 @@ function painelAtualizacao(est) {
     <p class="texto-ajuda">Última leitura geral: <b>${esc(est.ultima ? hm(est.ultima) : "—")}</b>. Verde: em dia. Laranja: passou do prazo. Vermelho: a leitura falhou.</p></div>`;
 }
 function statusSites(est) {
-  return ["Zuk", "Frazão", "Mega", "Biasi", "Lance Judicial"].map(s => { const i = (est.sites || {})[s] || {};
+  return ["Zuk", "Frazão", "Mega", "Biasi", "Lance Judicial", "Freitas"].map(s => { const i = (est.sites || {})[s] || {};
     return `<div class="site-st"><span><i class="dot" style="display:inline-block;background:${SITE_COR[s]};margin-right:8px"></i>${SITE_NOME[s]}</span><span class="${i.status === "ok" ? "ok" : i.status ? "erro" : ""}">${i.status === "ok" ? `${Number(i.lotes || 0).toLocaleString("pt-BR")} lotes · ${esc(new Date(i.quando).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"}))}` : i.status === "pausado" ? "em pausa" : i.status === "erro" ? "erro ao ler" : "aguardando"}</span></div>`; }).join("");
 }
 async function renderAjustes() {

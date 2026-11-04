@@ -1047,10 +1047,197 @@ def coletar_lancejudicial(http, log, anteriores=None, limite=4000, completo=True
     return lotes, ok and bool(achados)
 
 
+# ---------------------------------------------------------------- Freitas Leiloeiro
+FREITAS = "https://www.freitasleiloeiro.com.br"
+FREITAS_DETALHES_POR_LEITURA = 120
+_RUA_RX = r"(?:Rua|R\.|Avenida|Av\.?|Alameda|Al\.|Travessa|Tv\.|Estrada|Rodovia|Rod\.|Pra[çc]a|Largo|Via|Viela|Beco)"
+
+
+def _data_curta(s):
+    """'04/11/26 11:00' ou '04/11/2026 11:00' -> '2026-11-04T11:00'."""
+    m = re.search(r"(\d{2})/(\d{2})/(\d{2,4})\s*(?:às|as)?\s*(\d{1,2})[:h](\d{2})", s or "")
+    if not m:
+        return data_iso(s)
+    d, mo, a, h, mi = m.groups()
+    a = int(a) + (2000 if len(a) == 2 else 0)
+    try:
+        return datetime(a, int(mo), int(d), int(h), int(mi)).strftime("%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+
+
+def freitas_parse(html):
+    lotes = []
+    for b in html.split('class="cardlote"')[1:]:
+        m = re.search(r'href="/Leiloes/LoteDetalhes\?leilaoId=(\d+)&(?:amp;)?loteNumero=(\d+)"', b)
+        if not m:
+            continue
+        leilao, num = m.group(1), m.group(2)
+        img = re.search(r'class="cardLote-img"|<img src="([^"]+/FOTOS/[^"]+)"', b)
+        img = (re.search(r'<img src="([^"]+/FOTOS/[^"]+)"', b) or [None, ""])[1]
+        desc = texto((re.search(r'cardLote-descBens">\s*<span[^>]*>(.*?)</span>', b, re.S) or [None, ""])[1])
+        vlr = dinheiro(texto((re.search(r'cardLote-vlr">(.*?)</div>', b, re.S) or [None, ""])[1]))
+        tipo_lance = texto((re.search(r'cardLote-lance">(.*?)</div>', b, re.S) or [None, ""])[1])
+        data = _data_curta(texto((re.search(r'cardLote-data">(.*?)</div>', b, re.S) or [None, ""])[1]))
+        pracas = []
+        for mm in re.finditer(r'cardLote-details-af-leilao[^"]*">\s*(\d)º Leil[ãa]o:\s*([^<]*?)\s*</span>.*?cardLote-details-af-valor[^"]*">\s*(R\$[^<]*)<', b, re.S):
+            v = dinheiro(mm.group(3))
+            if v:
+                pracas.append({"nome": f"{mm.group(1)}ª praça", "data": _data_curta(mm.group(2)), "valor": v})
+        st = texto((re.search(r'cardLote-btn[^"]*"[^>]*>(.*?)</span>', b, re.S) or [None, ""])[1])
+        loc = texto((re.search(r'fa-thumbtack"></i>\s*(.*?)</span>', b, re.S) or [None, ""])[1])
+        lotes.append({"leilao": leilao, "num": num, "img": img, "desc": desc, "valor": vlr, "tipo_lance": tipo_lance,
+                      "data": data, "pracas": pracas, "status": st, "loc": loc})
+    return lotes
+
+
+def freitas_detalhe(html):
+    t = texto(html)
+    d = {"v": 1}
+    m = re.search(r"Descri[çc][ãa]o completa:\s*(.*?)\s*Informa[çc][õo]es importantes", t)
+    d["desc"] = m.group(1)[:1500] if m else ""
+    return d
+
+
+def _freitas_numero(s):
+    return _num_br(s)
+
+
+def _sem_acento(x):
+    import unicodedata
+    return "".join(ch for ch in unicodedata.normalize("NFD", x or "") if unicodedata.category(ch) != "Mn").lower().strip()
+
+
+def _titulo_br(x):
+    peq = {"de", "da", "do", "das", "dos", "e"}
+    return " ".join(w.lower() if (i and w.lower() in peq) else w.capitalize() for i, w in enumerate((x or "").split()))
+
+
+def freitas_montar(c, det):
+    desc = det.get("desc") or c["desc"]
+    m = re.match(r"\s*([^.\-/]{2,50}?)\s*[-/]\s*([A-Z]{2})\b[\s.\-:]*(.*)$", desc, re.S)
+    if m and (re.match(_RUA_RX + r"\b", m.group(1).strip()) or len(m.group(1).strip()) > 40 or re.search(r"\d", m.group(1))):
+        m = None  # o começo do texto é um endereço, não "Cidade-UF"
+    cidade, uf, resto = (m.group(1).strip(), m.group(2), m.group(3)) if m else ("", "", desc)
+    mm = re.match(r"([^/]+)/([A-Z]{2})", c["loc"] or "")
+    if mm:  # a cidade do cartão é o campo estruturado; o texto só empresta os acentos
+        c_loc = mm.group(1).strip()
+        if not (cidade and _sem_acento(cidade) == _sem_acento(c_loc)):
+            cidade = _titulo_br(c_loc) if c_loc.isupper() or c_loc == c_loc.upper() else c_loc
+        uf = uf or mm.group(2)
+        if _sem_acento(cidade) == "capital":
+            cidade = "São Paulo"
+    prot = re.sub(r"\b(Pq|Jd|Vl|Av|Al|Tv|Rod|Est|Sr|Dr|Dra|Pç|Lt|Qd|Ap|Apto|Cj|Res|Conj|Prof|Eng|Cel|Gen|Mal|Pres|Sta|Sto|Ex)\.\s", lambda m: m.group(1) + "\x00 ", resto)
+    frases = [x.replace("\x00", ".").strip() for x in re.split(r"(?<=[a-zç0-9)])\.\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])", prot) if x.strip()]
+    bairro = ""
+    if m and frases and not re.search(_RUA_RX + r"\b", frases[0]) and "," not in frases[0] and len(frases[0]) <= 40 and not re.search(r"\d", frases[0]):
+        bairro = re.sub(r"^(Bairro|B\.)\s+", "", frases[0]).strip(" .")
+        bairro = re.sub(r"^Pq\.\s*", "Parque ", bairro)
+        bairro = re.sub(r"^Jd\.\s*", "Jardim ", bairro)
+        bairro = re.sub(r"^Vl\.\s*", "Vila ", bairro)
+    rua = ""
+    mr = re.search(r"(" + _RUA_RX + r"\s+[^,.;()\d]{2,60}(?:,\s*(?:n[º°o]\.?\s*)?\d+[A-Za-z]?)?)", prot)
+    if mr:
+        rua = mr.group(1).replace("\x00", ".").strip(" ,.“”\"")
+        rua = re.sub(r"^R\.\s*", "Rua ", re.sub(r"^Av\.?\s+", "Avenida ", rua))
+        rua = re.sub(r",\s*n[º°o]\.?\s*", ", ", rua)
+        rua = re.split(r"\s+-\s+", re.sub(r",(?=\d)", ", ", re.sub(r"\s+", " ", rua)))[0].strip(" -")
+    ar = areas_de(desc)
+    mc = re.search(r"constr\.?\s*(?:de\s*)?" + _NUM + _M2, desc, re.I)
+    mt = re.search(r"terr\.?\s*(?:de\s*)?" + _NUM + _M2, desc, re.I)
+    if mc and not ar.get("area_constr"):
+        ar["area_constr"] = _num_br(mc.group(1))
+    if mt and not ar.get("area_terreno"):
+        ar["area_terreno"] = _num_br(mt.group(1))
+    tipo = classificar(desc[:400])
+    if re.match(r"\s*(?:um\s+|o\s+|uma\s+)?(?:lote|terreno|gleba)\b", resto.strip(), re.I):
+        tipo = "Terreno"
+    if cidade.isupper():
+        cidade = _titulo_br(cidade)
+    if tipo == "Veículo":
+        tipo = "Outros"
+    if tipo == "Terreno" and not ar.get("area_terreno"):
+        mg = re.search(r"(?:[áa]rea|medindo)\s+(?:total\s+)?(?:de\s+)?" + _NUM + _M2, desc, re.I)
+        if mg:
+            ar["area_terreno"] = _num_br(mg.group(1))
+    area = ar.get("area_constr") or (ar.get("area_terreno") if tipo == "Terreno" else None)
+    rotulo = tipo
+    mt2 = re.search(r"\b(Sobrado|Cobertura|Kitnet|Flat|Studio|Galp[ãa]o|Sala|Loja|Conjunto comercial|Fazenda|S[íi]tio|Ch[áa]cara|Terreno|Lote)\b", desc[:300], re.I)
+    if mt2 and tipo in ("Casa", "Apartamento", "Comercial", "Galpão", "Rural"):
+        rotulo = mt2.group(1).capitalize() if tipo != "Comercial" else mt2.group(1).capitalize()
+    if tipo == "Outros":
+        rotulo = "Imóvel"
+    ar_txt = f" {str(round(area)).replace('.', ',')} m²" if area else ""
+    seg = [f"{rotulo}{ar_txt}"] + [x for x in (rua, bairro, cidade, uf) if x]
+    ocup = "Desocupado" if re.search(r"desocupad", desc, re.I) else ("Ocupado" if re.search(r"\bocupad[oa]s?\b", desc, re.I) else "")
+    return {"titulo": " - ".join(seg), "tipo": tipo, "cidade": cidade, "uf": uf, "bairro": bairro, "rua": rua,
+            "area": area, "ocupacao": ocup, **ar}
+
+
+def coletar_freitas(http, log, anteriores=None, limite=4000, completo=True):
+    anteriores = anteriores or {}
+    H = {"X-Requested-With": "XMLHttpRequest", "Referer": FREITAS + "/Leiloes/Pesquisar?Categoria=2"}
+    achados, ok = {}, True
+    for p in range(1, 60):
+        try:
+            r = http.get(FREITAS + f"/Leiloes/PesquisarLotes?Categoria=2&TipoLoteId=0&PageNumber={p}&TopRows=12&ClienteSclId=0", H)
+        except Bloqueado:
+            raise
+        except Exception as e:
+            log(f"Freitas: falha na página {p}: {e}")
+            ok = False
+            break
+        if "Nenhum lote localizado" in r:
+            break
+        novos = 0
+        for c in freitas_parse(r):
+            k = f"{c['leilao']}-{c['num']}"
+            if k not in achados:
+                achados[k] = c
+                novos += 1
+        if not novos or len(achados) >= limite:
+            break
+    agora = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    lotes, feitos = [], 0
+    for k, c in achados.items():
+        id_ = f"freitas:{k}"
+        url = f"{FREITAS}/Leiloes/LoteDetalhes?leilaoId={c['leilao']}&loteNumero={c['num']}"
+        ant = anteriores.get(id_) or {}
+        det = ant.get("_det")
+        if (not det or det.get("v") != 1) and feitos < FREITAS_DETALHES_POR_LEITURA:
+            try:
+                det = freitas_detalhe(http.get(url, {"Referer": FREITAS + "/"}))
+                feitos += 1
+            except Bloqueado:
+                raise
+            except Exception as e:
+                log(f"Freitas: falha no lote {k}: {e}")
+        det = det or {}
+        mo = freitas_montar(c, det)
+        pracas = c["pracas"] or ([{"nome": "Praça única", "data": c["data"], "valor": c["valor"]}] if c["valor"] else [])
+        if not pracas:
+            continue
+        l = {"id": id_, "site": "Freitas", "url": url, "codigo": k, "titulo": mo["titulo"], "endereco": mo["rua"],
+             "bairro": mo["bairro"], "cidade": mo["cidade"], "uf": mo["uf"], "tipo": mo["tipo"], "tipo_site": "",
+             "imagem": c["img"], "area": mo["area"], "area_txt": f"{mo['area']} m²" if mo["area"] else "", "pracas": pracas,
+             "ocupacao": mo["ocupacao"], "comitente": "", "status": c["status"]}
+        if mo["rua"] and mo["cidade"]:
+            l["end_maps"] = endereco_maps(f"{mo['rua']}, {mo['bairro']}, {mo['cidade']}, {mo['uf']}")
+        for kk in ("area_constr", "area_terreno"):
+            if mo.get(kk):
+                l[kk] = mo[kk]
+        if det:
+            l["_det"] = det
+        lotes.append(finalizar(l))
+    log(f"Freitas: {len(lotes)} lotes, {feitos} páginas de detalhe")
+    return lotes, ok and bool(achados)
+
+
 SITES = {
     "Mega": coletar_mega,
     "Frazão": coletar_frazao,
     "Zuk": coletar_zuk,
     "Biasi": coletar_biasi,
     "Lance Judicial": coletar_lancejudicial,
+    "Freitas": coletar_freitas,
 }
