@@ -253,6 +253,7 @@ async function renderAjustes() {
       <button class="btn-sec vidro" id="aj-sair" style="color:var(--hot)">Sair deste aparelho</button></div>
     <div class="painel vidro"><h4>Meu Top 15</h4><p class="texto-ajuda" style="margin-top:0">${esc(textoPerfil())}</p><button class="btn-sec vidro" id="aj-pref">Ajustar estados e tipos</button></div>
     <div class="painel vidro"><h4>Minha IA</h4><p class="texto-ajuda" style="margin-top:0">${ia ? `Usando <b>${esc(ia.nome)}</b> com a sua chave (…${esc(ia.final)}), guardada na sua conta e protegida com a sua senha.` : "Nenhuma chave neste aparelho. A perícia usa a sua própria chave de IA (Claude ou Gemini)."}</p><button class="btn-sec vidro" id="aj-ia">${ia ? "Trocar ou apagar a chave" : "Conectar minha IA"}</button></div>
+    <div class="painel vidro"><h4>Imóveis ocultos</h4><p class="texto-ajuda" style="margin-top:0">${CONTA.ocultos.length ? `Você ocultou <b>${CONTA.ocultos.length}</b> ${CONTA.ocultos.length === 1 ? "imóvel" : "imóveis"}. Eles não aparecem na sua lista nem no Top 15 (os favoritos nunca somem).` : "Quando você tocar no olho cortado de um imóvel, ele some da sua lista. Nada ocultado por enquanto."}</p>${CONTA.ocultos.length ? '<button class="btn-sec vidro" id="aj-mostrar">Mostrar todos de novo</button>' : ""}</div>
     <div class="painel vidro"><h4>Tour do app</h4><p class="texto-ajuda" style="margin-top:0">Reveja onde fica cada coisa, em 1 minuto.</p><button class="btn-sec vidro" id="aj-tour">Ver o tour de novo</button></div>
     <div class="painel vidro"><h4>Aparência</h4>
       <div class="chips wrap" id="aj-temas">${[["auto", "Automático (dia/noite)"], ["claro", "Claro"], ["escuro", "Escuro"]].map(([v, t]) => `<button class="chip ${TEMA === v ? "on" : "vidro"}" data-tema="${v}">${t}</button>`).join("")}</div></div>
@@ -273,6 +274,7 @@ async function renderAjustes() {
   });
   $("#aj-sair").addEventListener("click", sairDoApp);
   $("#aj-pref").addEventListener("click", () => abrirPref(false));
+  $("#aj-mostrar")?.addEventListener("click", () => { CONTA.ocultos.slice().forEach(id => CONTA.ocultar(id, false)); toast("Tudo de volta na sua lista"); renderAjustes(); });
   $("#aj-tour").addEventListener("click", () => { trocarAba("inicio"); setTimeout(() => Tour.iniciar(), 250); });
   $("#aj-ia").addEventListener("click", () => IA.abrirTela(renderAjustes));
   $("#aj-temas").addEventListener("click", e => { const b = e.target.closest("[data-tema]"); if (!b) return; TEMA = b.dataset.tema; LS.set("tema", TEMA); aplicarTema(CONTA.perfil.nome); renderAjustes(); });
