@@ -560,7 +560,7 @@ function abrirLote(id) {
       <button class="btn-mini2 vidro" id="fav-lote" title="Favoritar e ser avisado das mudanças">${rotFav(l.fav)}</button>
       ${S.aba !== "favoritos" && !l.fav ? `<button class="btn-mini2 vidro" id="ocultar-lote" title="Ocultar este imóvel da minha lista">Ocultar</button>` : ""}
       <button class="btn-mini2 vidro" id="abrir-calc" title="Quanto posso dar de lance?">Calculadora</button>
-      <button class="btn-mini2 vidro" id="abrir-pericia" title="Fazer perícia com os documentos">Perícia ›</button>
+      <button class="btn-mini2 vidro" id="abrir-pericia" title="Fazer perícia com os documentos (versão beta)">Perícia <span class="beta-mini" aria-label="versão beta">BETA</span></button>
     </div>
     ${oficial ? `<a class="btn-grande btn-acc btn-oficial" style="display:grid;place-items:center;text-decoration:none" href="${esc(oficial)}" target="_blank" rel="noopener noreferrer">Ir para o anúncio oficial ›</a>` : ""}`;
   $("#compartilhar").addEventListener("click", async () => {

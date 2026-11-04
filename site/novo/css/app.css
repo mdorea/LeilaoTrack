@@ -154,6 +154,7 @@ button,a,.chip,.card{touch-action:manipulation}
 .pe-acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
 .pe-acoes>:last-child:nth-child(odd){grid-column:span 2}
 .btn-mini2{height:36px;border-radius:18px;font-weight:600;font-size:12.5px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.beta-mini{display:inline-block;margin-left:4px;padding:1px 5px;border-radius:6px;background:var(--acc);color:#fff;font-size:8.5px;font-weight:700;letter-spacing:.5px;line-height:13px;vertical-align:2px}
 .btn-oficial{height:46px!important;font-size:14.5px!important}
 .folha-pe{padding-top:10px!important}
 .btn-grande{width:100%;height:50px;border-radius:25px;background:var(--chip-on-bg);color:var(--chip-on-tx);font-weight:700;font-size:15px}
