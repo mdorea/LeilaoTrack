@@ -1,13 +1,18 @@
-import json, collections
+import re
 import coletores as c
 def nota(t): print("::notice::" + t.replace("\n", " %0A ")[:3800])
-logs = []
+http = c.Http(pausa=2.0, timeout=25)
+S = "https://satoleiloes.com.br"
 try:
-    lotes, ok = c.coletar_freitas(c.Http(pausa=2.0), logs.append, anteriores={})
-    nota(f"TOTAL {len(lotes)} ok={ok} | " + " | ".join(logs) + " | " + str(dict(collections.Counter(l["tipo"] for l in lotes))))
-    nota("SEM rua=%d bairro=%d cidade=%d uf=%d imagem=%d encerra=%d 2pracas=%d area=%d" % tuple(
-        [sum(not l[k] for l in lotes) for k in ("endereco","bairro","cidade","uf","imagem")] + [sum(not l["encerra"] for l in lotes), sum(len(l["pracas"]) > 1 for l in lotes), sum(bool(l.get("area")) for l in lotes)]))
-    nota("TITULOS " + " || ".join(f'{l["titulo"]} [{l["valor"]}, {l["desconto"]}%, {l["encerra"]}, {l["ocupacao"]}]' for l in lotes[:25]))
-    nota("TITULOS2 " + " || ".join(l["titulo"] for l in lotes[25:80]))
+    r = http.get(S + "/robots.txt")
+    nota("SATO robots " + re.sub(r"\s+", " ", r)[:500])
+    h = http.get(S)
+    js = [u for u in re.findall(r'src="(/assets/js/[^"]+)"', h)]
+    for u in js:
+        j = http.get(S + u)
+        ap = sorted(set(re.findall(r"""['"`]((?:https?://[^'"`\s]*api[^'"`\s]*|/api/[^'"`\s]*|/[a-z\-]+/[a-z\-/]*(?:lote|imove|leilao|busca|search)[^'"`\s]*))['"`]""", j, re.I)))
+        nota(f"SATO {u} {len(j)}B: " + " ; ".join(ap)[:1500])
+        base = re.findall(r"""(?:baseURL|VUE_APP_API\w*|apiUrl|API_URL)['"]?\s*[:=]\s*['"`]([^'"`]+)""", j)
+        nota("SATO base " + str(base[:6]))
 except Exception as e:
-    import traceback; nota("ERRO " + traceback.format_exc()[-1200:])
+    import traceback; nota("SATO ERRO " + traceback.format_exc()[-500:])
