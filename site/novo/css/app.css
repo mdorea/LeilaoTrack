@@ -151,6 +151,11 @@ button,a,.chip,.card{touch-action:manipulation}
 .folha-pe{padding:12px 20px calc(env(safe-area-inset-bottom) + 16px);flex:none}
 .sec{font-size:11px;font-weight:600;letter-spacing:.6px;color:var(--mu);text-transform:uppercase;margin:16px 0 9px;display:flex;justify-content:space-between}
 .sec span{text-transform:none;letter-spacing:0;color:var(--tx);font-size:12.5px}
+.pe-acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.pe-acoes>:last-child:nth-child(odd){grid-column:span 2}
+.btn-mini2{height:36px;border-radius:18px;font-weight:600;font-size:12.5px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn-oficial{height:46px!important;font-size:14.5px!important}
+.folha-pe{padding-top:10px!important}
 .btn-grande{width:100%;height:50px;border-radius:25px;background:var(--chip-on-bg);color:var(--chip-on-tx);font-weight:700;font-size:15px}
 .btn-acc{background:var(--acc);color:#fff}
 .btn-sec{width:100%;height:46px;border-radius:23px;font-weight:600;font-size:13.5px;margin-bottom:10px}

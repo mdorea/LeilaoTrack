@@ -555,11 +555,14 @@ function abrirLote(id) {
     <div class="sec">Detalhes</div><div class="linhas">${linhas.map(([a, b]) => `<div><span>${a}</span><span>${esc(b)}</span></div>`).join("")}</div>
     <div class="sec">Histórico</div><div class="eventos">${ev.map(e => `<div><time>${esc(new Date(e.quando).toLocaleString("pt-BR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}))}</time><span>${esc(e.texto)}</span></div>`).join("")}${l.visto ? `<div><time>${esc(new Date(l.visto).toLocaleString("pt-BR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}))}</time><span>Começamos a acompanhar este lote</span></div>` : ""}</div>
     <p class="texto-ajuda" style="margin-top:14px">Edital, matrícula e o lance ficam no site oficial. Confira sempre o edital antes de dar lance.</p>`;
-  $("#pe-lote").innerHTML = `<button class="btn-sec vidro" id="fav-lote">${l.fav ? "♥ Nos favoritos: aviso as mudanças" : "♡ Favoritar e me avisar de mudanças"}</button>
-    ${S.aba !== "favoritos" && !l.fav ? `<button class="btn-sec vidro" id="ocultar-lote">Ocultar este imóvel da minha lista</button>` : ""}
-    <button class="btn-sec vidro" id="abrir-calc">Calculadora: quanto posso dar de lance?</button>
-    <button class="btn-sec vidro" id="abrir-pericia">Fazer perícia com os documentos ›</button>
-    ${oficial ? `<a class="btn-grande btn-acc" style="display:grid;place-items:center;text-decoration:none" href="${esc(oficial)}" target="_blank" rel="noopener noreferrer">Ir para o anúncio oficial ›</a>` : ""}`;
+  const rotFav = on => on ? "♥ Favorito" : "♡ Favoritar";
+  $("#pe-lote").innerHTML = `<div class="pe-acoes">
+      <button class="btn-mini2 vidro" id="fav-lote" title="Favoritar e ser avisado das mudanças">${rotFav(l.fav)}</button>
+      ${S.aba !== "favoritos" && !l.fav ? `<button class="btn-mini2 vidro" id="ocultar-lote" title="Ocultar este imóvel da minha lista">Ocultar</button>` : ""}
+      <button class="btn-mini2 vidro" id="abrir-calc" title="Quanto posso dar de lance?">Calculadora</button>
+      <button class="btn-mini2 vidro" id="abrir-pericia" title="Fazer perícia com os documentos">Perícia ›</button>
+    </div>
+    ${oficial ? `<a class="btn-grande btn-acc btn-oficial" style="display:grid;place-items:center;text-decoration:none" href="${esc(oficial)}" target="_blank" rel="noopener noreferrer">Ir para o anúncio oficial ›</a>` : ""}`;
   $("#compartilhar").addEventListener("click", async () => {
     const url = location.origin + location.pathname + "#lote=" + encodeURIComponent(l.id);
     const texto = `${l.titulo}${(l._preco || l.valor) ? " · " + fmtBRL(l._preco || l.valor) : ""} · no LeilãoTrack`;
@@ -573,7 +576,7 @@ function abrirLote(id) {
   $("#abrir-pericia").addEventListener("click", () => { fechar(); trocarAba("pericia"); Pericia.comLote(l); });
   $("#fav-lote").addEventListener("click", async () => {
     const on = await alternarFav(l.id);
-    $("#fav-lote").textContent = on ? "♥ Nos favoritos: aviso as mudanças" : "♡ Favoritar e me avisar de mudanças";
+    $("#fav-lote").textContent = rotFav(on);
     const c = document.querySelector(`[data-fav="${CSS.escape(l.id)}"]`); if (c) { c.classList.toggle("on", on); c.innerHTML = coracao(on); }
   });
   $("#corpo-lote").scrollTop = 0; abrir("#folha-lote");
