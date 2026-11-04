@@ -1150,6 +1150,10 @@ def freitas_montar(c, det):
     if mt and not ar.get("area_terreno"):
         ar["area_terreno"] = _num_br(mt.group(1))
     tipo = classificar(desc[:400])
+    if re.match(r"\s*(?:um\s+|o\s+|uma\s+)?(?:lote|terreno|gleba)\b", resto.strip(), re.I):
+        tipo = "Terreno"
+    if cidade.isupper():
+        cidade = _titulo_br(cidade)
     if tipo == "Veículo":
         tipo = "Outros"
     if tipo == "Terreno" and not ar.get("area_terreno"):
