@@ -1,12 +1,12 @@
 /* LeilãoTrack · lotes: lista, filtros, Top 15, ficha do lote, alertas e calculadora */
 "use strict";
 const ORDENS = [
-  ["desconto", "Maior desconto", "sobre a 1ª praça"], ["menor", "Menor valor", ""], ["maior", "Maior valor", ""],
+  ["aleatoria", "Aleatória", "muda a cada vez que você abre"], ["desconto", "Maior desconto", "sobre a 1ª praça"], ["menor", "Menor valor", ""], ["maior", "Maior valor", ""],
   ["encerra", "Encerra primeiro", "próximos leilões no topo"], ["recentes", "Mais recentes", "entrou por último"], ["lances", "Mais lances", "mais disputados"],
   ["estimado", "Abaixo do estimado", "lance x valor estimado"]];
 const ORDEM_MINHA = ["minha", "Minha ordem", "você organiza com as setas"];
 const ordensDaAba = aba => aba === "favoritos" ? [ORDEM_MINHA, ...ORDENS] : ORDENS;
-function ordemSalva(aba) { const v = LS.get(aba === "favoritos" ? "ordem_fav" : "ordem"); return ordensDaAba(aba).some(o => o[0] === v) ? v : (aba === "favoritos" ? "minha" : "desconto"); }
+function ordemSalva(aba) { const v = LS.get(aba === "favoritos" ? "ordem_fav" : "ordem"); return ordensDaAba(aba).some(o => o[0] === v) ? v : (aba === "favoritos" ? "minha" : "aleatoria"); }
 const FILTRO0 = {sites: [], tipos: [], pracas: [], ocup: [], conf: [], itbi: [], ufs: [], cidades: [], vmin: 0, vmax: 0, dmin: 0, prazo: "", novos: false, fecham: false, top: true};
 const VMAX = 3000000;
 const CHAVES_LISTA = ["sites", "tipos", "pracas", "ocup", "conf", "itbi", "ufs", "cidades"];
@@ -92,6 +92,7 @@ function filtrar(base, f, ignorar) {
   return base.filter(l => {
     if (!l.ativo && S.aba !== "favoritos") return false;
     if (l.encerrado && S.aba !== "favoritos") return false;
+    if (S.aba !== "favoritos" && CONTA.ocultos.includes(l.id)) return false;
     if (q.length && !q.every(w => l._busca.includes(w))) return false;
     if (f.sites.length && !f.sites.includes(l.site)) return false;
     if (f.tipos.length && !f.tipos.includes(l.tipo)) return false;
@@ -110,8 +111,11 @@ function filtrar(base, f, ignorar) {
     return true;
   });
 }
+const SEMENTE = (Math.random() * 1e9) | 0;
+const sorteio = id => { let h = SEMENTE; for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 2654435761); return (h ^ (h >>> 15)) >>> 0; };
 function ordenar(a) {
   const by = {
+    aleatoria: (x, y) => sorteio(x.id) - sorteio(y.id),
     desconto: (x, y) => (y._desc || 0) - (x._desc || 0) || (x._preco || 0) - (y._preco || 0),
     menor: (x, y) => (x._preco || 9e12) - (y._preco || 9e12), maior: (x, y) => (y._preco || 0) - (x._preco || 0),
     encerra: (x, y) => x._enc - y._enc, recentes: (x, y) => (y.visto || "").localeCompare(x.visto || "") || x._enc - y._enc,
@@ -232,7 +236,7 @@ function card(l) {
     ${foto(l)}
     <div class="info">
       <div>
-        <div class="topo-card">${t ? `<span class="rank">#${t.pos}</span>` : ""}<i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(l.site)}${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
+        <div class="topo-card">${t ? `<span class="rank">#${t.pos}</span>` : ""}<i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(siteCurto(l.site))}${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
         ${l.ativo === false ? `<div class="aviso-saiu">${esc(avisoSaiu(l, true) || "Saiu do site")}</div>` : ""}
         <div class="tit">${esc(l.titulo)}</div>
         ${t ? `<div class="motivo">${esc(t.motivos.slice(0, 2).join(" · "))}</div>` : ""}
@@ -244,8 +248,10 @@ function card(l) {
     ${desc > 0 ? `<span class="desc">-${desc}%</span>` : ""}
     ${S.organizando && S.aba === "favoritos" ? `<span class="alca-arrastar" data-arrastar="${esc(l.id)}" role="button" aria-label="Segure e arraste para mudar a ordem" title="Arraste para mudar a ordem">${ALCA}</span>`
       : `<span class="coracao ${l.fav ? "on" : ""}" data-fav="${esc(l.id)}" role="button" aria-label="Favoritar">${coracao(l.fav)}</span>`}
+    ${S.aba !== "favoritos" ? `<span class="ocultar" data-ocultar="${esc(l.id)}" role="button" aria-label="Ocultar este imóvel" title="Ocultar este imóvel">${OLHO_OFF}</span>` : ""}
   </button>`;
 }
+const OLHO_OFF = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 6.2A9.6 9.6 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6C3.6 9.4 2 12 2 12s3.5 6 10 6a9.6 9.6 0 0 0 4.3-1M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
 const ALCA = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 /* arrastar pela alça (≡) para reordenar os favoritos: funciona com dedo e com mouse */
 let _arr = null;
@@ -305,7 +311,7 @@ function renderChips() {
   const f = S.filtro; const c = [];
   const rem = (k, v, t) => c.push(`<button class="chip on" data-rem="${k}" data-v="${esc(v)}">${esc(t)} <span class="x">×</span></button>`);
   f.tipos.forEach(t => rem("tipos", t, t)); f.ufs.forEach(t => rem("ufs", t, t)); f.cidades.forEach(t => rem("cidades", t, t.split("/")[0]));
-  f.sites.forEach(t => rem("sites", t, t)); f.pracas.forEach(t => rem("pracas", t, t)); f.ocup.forEach(t => rem("ocup", t, t));
+  f.sites.forEach(t => rem("sites", t, siteCurto(t))); f.pracas.forEach(t => rem("pracas", t, t)); f.ocup.forEach(t => rem("ocup", t, t));
   if (f.vmin || (f.vmax && f.vmax < VMAX)) rem("valor", "", f.vmin && f.vmax && f.vmax < VMAX ? `${fmtCurto(f.vmin)}–${fmtCurto(f.vmax).replace("R$ ", "")}` : f.vmin ? `a partir de ${fmtCurto(f.vmin)}` : `até ${fmtCurto(f.vmax)}`);
   if (f.dmin) rem("dmin", "", `${f.dmin}%+ off`);
   if (f.prazo) rem("prazo", "", {hoje: "Fecha hoje", "7": "Até 7 dias", "30": "Até 30 dias"}[f.prazo]);
@@ -323,13 +329,24 @@ $("#chips").addEventListener("click", e => {
 });
 $("#grade").addEventListener("click", async e => {
   if (S.organizando) return;
+  const oc = e.target.closest("[data-ocultar]");
+  if (oc) { e.stopPropagation(); ocultarLote(oc.dataset.ocultar); return; }
   const fav = e.target.closest("[data-fav]");
   if (fav) { e.stopPropagation(); const on = await alternarFav(fav.dataset.fav); fav.classList.toggle("on", on); fav.innerHTML = coracao(on); return; }
   const c = e.target.closest(".card"); if (c) abrirLote(c.dataset.id);
 });
+function ocultarLote(id) {
+  CONTA.ocultar(id, true); render();
+  const t = $("#toast"); clearTimeout(t._t);
+  t.innerHTML = 'Imóvel ocultado · <button type="button" id="desfazer-oc" style="color:inherit;text-decoration:underline;font:inherit;font-weight:700;padding:4px 2px">Desfazer</button>';
+  t.style.pointerEvents = "auto"; t.classList.add("on");
+  $("#desfazer-oc").onclick = () => { CONTA.ocultar(id, false); t.classList.remove("on"); t.style.pointerEvents = ""; render(); };
+  t._t = setTimeout(() => { t.classList.remove("on"); t.style.pointerEvents = ""; }, 5000);
+}
 async function alternarFav(id) {
   const l = S.lotes.find(x => x.id === id); if (!l) return false;
   const on = !l.fav; l.fav = on;
+  if (on && CONTA.ocultos.includes(id)) CONTA.ocultar(id, false);
   toast(on ? "Adicionado aos favoritos" : "Removido dos favoritos");
   const ok = await CONTA.favoritar(id, on);
   if (!ok) { l.fav = !on; toast("Não consegui salvar o favorito. Confira a conexão."); }
@@ -355,7 +372,7 @@ $("#btn-filtros").addEventListener("click", () => { S.rascunho = JSON.parse(JSON
 function contar(arr, fn) { const m = new Map(); arr.forEach(l => { const k = fn(l); if (k) m.set(k, (m.get(k) || 0) + 1); }); return [...m.entries()].sort((a, b) => b[1] - a[1]); }
 function grupo(titulo, chave, opcoes) {
   const f = S.rascunho;
-  return `<div class="sec">${titulo}</div><div class="chips wrap">${opcoes.map(([v, n]) => `<button class="chip ${f[chave].includes(v) ? "on" : "vidro"}" data-k="${chave}" data-v="${esc(v)}">${esc(String(v).split("/")[0])}${n != null ? ` <small style="opacity:.6">${n}</small>` : ""}</button>`).join("")}</div>`;
+  return `<div class="sec">${titulo}</div><div class="chips wrap">${opcoes.map(([v, n]) => `<button class="chip ${f[chave].includes(v) ? "on" : "vidro"}" data-k="${chave}" data-v="${esc(v)}">${esc(chave === "sites" ? siteCurto(v) : String(v).split("/")[0])}${n != null ? ` <small style="opacity:.6">${n}</small>` : ""}</button>`).join("")}</div>`;
 }
 function renderFiltros() {
   const f = S.rascunho; const vivos = S.lotes.filter(l => l.ativo && !l.encerrado);
@@ -539,6 +556,7 @@ function abrirLote(id) {
     <div class="sec">Histórico</div><div class="eventos">${ev.map(e => `<div><time>${esc(new Date(e.quando).toLocaleString("pt-BR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}))}</time><span>${esc(e.texto)}</span></div>`).join("")}${l.visto ? `<div><time>${esc(new Date(l.visto).toLocaleString("pt-BR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}))}</time><span>Começamos a acompanhar este lote</span></div>` : ""}</div>
     <p class="texto-ajuda" style="margin-top:14px">Edital, matrícula e o lance ficam no site oficial. Confira sempre o edital antes de dar lance.</p>`;
   $("#pe-lote").innerHTML = `<button class="btn-sec vidro" id="fav-lote">${l.fav ? "♥ Nos favoritos: aviso as mudanças" : "♡ Favoritar e me avisar de mudanças"}</button>
+    ${S.aba !== "favoritos" && !l.fav ? `<button class="btn-sec vidro" id="ocultar-lote">Ocultar este imóvel da minha lista</button>` : ""}
     <button class="btn-sec vidro" id="abrir-calc">Calculadora: quanto posso dar de lance?</button>
     <button class="btn-sec vidro" id="abrir-pericia">Fazer perícia com os documentos ›</button>
     ${oficial ? `<a class="btn-grande btn-acc" style="display:grid;place-items:center;text-decoration:none" href="${esc(oficial)}" target="_blank" rel="noopener noreferrer">Ir para o anúncio oficial ›</a>` : ""}`;
@@ -550,6 +568,7 @@ function abrirLote(id) {
       await navigator.clipboard.writeText(url); toast("Link copiado. Só abre para quem tem acesso ao grupo");
     } catch (e) { if (e && e.name !== "AbortError") toast("Não consegui copiar o link"); }
   });
+  $("#ocultar-lote")?.addEventListener("click", () => { fechar(); ocultarLote(l.id); });
   $("#abrir-calc").addEventListener("click", () => abrirCalc(l));
   $("#abrir-pericia").addEventListener("click", () => { fechar(); trocarAba("pericia"); Pericia.comLote(l); });
   $("#fav-lote").addEventListener("click", async () => {
@@ -623,7 +642,7 @@ function renderAlertas() {
       const d = new Date(e.quando).toLocaleDateString("pt-BR", {weekday: "long", day: "numeric", month: "long"});
       if (d !== dia) { dia = d; out.push(`<div class="dia">${esc(d.charAt(0).toUpperCase() + d.slice(1))}</div>`); }
       const l = e.lote, novo = e.quando > visto;
-      out.push(`<button class="ev vidro ${novo ? "nao-lido" : ""}" data-id="${esc(e.id)}">${foto({id: e.id, imagem: l.imagem})}<div style="min-width:0;flex:1"><p><span class="tag">${esc(nomes[e.tipo] || e.tipo)}</span>${ehFav(e) ? "♥ " : ""}${esc(l.titulo)}</p><small>${esc(e.tipo === "novo" ? `${l.site} · ${l.cidade || ""}/${l.uf || ""} · ${fmtBRL(l.valor)}` : e.texto)} · ${esc(new Date(e.quando).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"}))}</small></div>${novo ? '<i class="ponto" aria-label="não lido"></i>' : ""}</button>`);
+      out.push(`<button class="ev vidro ${novo ? "nao-lido" : ""}" data-id="${esc(e.id)}">${foto({id: e.id, imagem: l.imagem})}<div style="min-width:0;flex:1"><p><span class="tag">${esc(nomes[e.tipo] || e.tipo)}</span>${ehFav(e) ? "♥ " : ""}${esc(l.titulo)}</p><small>${esc(e.tipo === "novo" ? `${siteCurto(l.site)} · ${l.cidade || ""}/${l.uf || ""} · ${fmtBRL(l.valor)}` : e.texto)} · ${esc(new Date(e.quando).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"}))}</small></div>${novo ? '<i class="ponto" aria-label="não lido"></i>' : ""}</button>`);
     }
     box.innerHTML = out.join("");
   }

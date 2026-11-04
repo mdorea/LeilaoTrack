@@ -5,6 +5,7 @@ const CONTA = {
   prefs: {ufs: [], tipos: [], configurado: false, alertas_visto: null, ordem_favs: []},
   ajustes: {},
   favs: new Set(),
+  ocultos: [],   // ids que a pessoa não quer ver (guardado em ajustes.ocultos; limite do banco: ~100)
   calculos: new Map(),
   get uid() { return SB.usuario && SB.usuario.id; },
   get admin() { return !!(this.perfil && this.perfil.papel === "admin"); },
@@ -29,6 +30,8 @@ const CONTA = {
       this.ajustes = pr.ajustes && typeof pr.ajustes === "object" && !Array.isArray(pr.ajustes) ? pr.ajustes : {};
       const of = this.ajustes.ordem_favs;
       this.prefs.ordem_favs = Array.isArray(of) ? of.filter(x => typeof x === "string" && /^[a-z]{2,10}:[A-Za-z0-9_.-]{1,60}$/.test(x)).slice(0, 150) : [];
+      const oc = this.ajustes.ocultos;
+      this.ocultos = Array.isArray(oc) ? oc.filter(x => typeof x === "string" && /^[a-z]{2,10}:[A-Za-z0-9_.-]{1,60}$/.test(x)).slice(0, 100) : [];
     } else {
       await SB.inserir("preferencias", {user_id: this.uid}, "ignorar").catch(() => {});
     }
@@ -38,7 +41,7 @@ const CONTA = {
   },
   limpar() {
     this.perfil = null; this.prefs = {ufs: [], tipos: [], configurado: false, alertas_visto: null, ordem_favs: []}; this.ajustes = {};
-    this.favs = new Set(); this.calculos = new Map();
+    this.favs = new Set(); this.calculos = new Map(); this.ocultos = [];
   },
 
   async favoritar(id, on) {
@@ -65,6 +68,18 @@ const CONTA = {
       SB.atualizar("preferencias", "user_id=eq." + encodeURIComponent(this.uid), {ajustes: this.ajustes})
         .catch(() => toast("Não consegui salvar a ordem agora. Confira a conexão."));
     }, 800);
+  },
+  _tOcultos: null,
+  // "ocultar" um imóvel: some da lista dessa pessoa em todos os aparelhos
+  async ocultar(id, on) {
+    const lista = this.ocultos.filter(x => x !== id);
+    this.ocultos = (on ? [id, ...lista] : lista).slice(0, 100);
+    clearTimeout(this._tOcultos);
+    this._tOcultos = setTimeout(() => {
+      this.ajustes = Object.assign({}, this.ajustes, {ocultos: this.ocultos});
+      SB.atualizar("preferencias", "user_id=eq." + encodeURIComponent(this.uid), {ajustes: this.ajustes})
+        .catch(() => toast("Não consegui salvar o que você ocultou. Confira a conexão."));
+    }, 600);
   },
   _tVisto: null,
   salvarVisto(ate) {

@@ -119,6 +119,8 @@ button,a,.chip,.card{touch-action:manipulation}
 .desc{position:absolute;top:10px;right:10px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:9px}
 .coracao{position:absolute;right:8px;top:34px;width:30px;height:30px;display:grid;place-items:center;color:var(--mu2)}
 .coracao.on{color:#FF5C7A}
+.ocultar{position:absolute;right:8px;top:70px;width:30px;height:30px;display:grid;place-items:center;color:var(--mu2);opacity:.7}
+.ocultar:active{opacity:1}
 .vazio{padding:50px 20px;text-align:center;color:var(--mu);border-radius:var(--r-card)}
 .mais{height:1px}
 /* barra inferior */
