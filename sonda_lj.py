@@ -5,28 +5,25 @@ http = c.Http(pausa=2.0, timeout=25)
 B = "https://seuimovelbb.com.br"
 try:
     h = http.get(B + "/catalogo/categoria/residenciais")
-    js = sorted(set(re.findall(r'src="([^"]+\.js[^"]*)"', h)))
-    nota("BB js " + " ; ".join(js)[:600])
-    inline = " ".join(re.findall(r"<script(?![^>]*src)[^>]*>(.*?)</script>", h, re.S))
-    ap = sorted(set(re.findall(r"""['"`](/(?:api|ajax|catalogo|busca|imovel)[^'"`\s]{0,80})['"`]""", inline)))
-    nota("BB inline endpoints " + " ; ".join(ap)[:700])
-    for u in js:
-        if "google" in u or "bootstrap" in u or "jquery" in u:
-            continue
-        uu = u if u.startswith("http") else B + u
-        if not uu.startswith(B):
-            continue
-        j = http.get(uu)
-        ap = sorted(set(re.findall(r"""['"`]((?:/|https?://)[^'"`\s]{0,90}(?:api|ajax|listar|buscar|catalogo|pesquisa|imoveis)[^'"`\s]{0,60})['"`]""", j, re.I)))
-        nota(f"BB {u} {len(j)}B endpoints: " + " ; ".join(ap)[:900])
+    js = [u for u in re.findall(r'src="([^"]+\.js[^"]*)"', h) if not u.startswith("http")]
+    nota("BB js proprios " + " ; ".join(js))
+    for u in js[:3]:
+        j = http.get(B + "/" + u.lstrip("/"))
+        ap = sorted(set(re.findall(r"""['"`]([^'"`\s]{0,70}(?:api|ajax|listar|buscar|catalogo|pesquisa|filtro|imoveis|paginacao)[^'"`\s]{0,60})['"`]""", j, re.I)))
+        nota(f"BB {u} {len(j)}B: " + " ; ".join(ap)[:1200])
+        for m in list(re.finditer(r"(\$\.(?:get|post|ajax|getJSON)|fetch)\(", j))[:4]:
+            nota("BB chamada " + re.sub(r"\s+", " ", j[m.start():m.start()+260]))
 except Exception as e:
-    import traceback; nota("BB ERRO " + traceback.format_exc()[-500:])
+    import traceback; nota("BB ERRO " + traceback.format_exc()[-400:])
 F = "https://www.freitasleiloeiro.com.br"
-for cat in (2, 3):
-    try:
-        h = http.get(f"{F}/Leiloes/Pesquisar?Categoria={cat}")
-        t = c.texto(h)
-        k = t.find("Refine sua busca")
-        nota(f"FR cat{cat} " + re.search(r"<title>(.*?)</title>", h, re.S).group(1).strip()[:60] + " | " + t[k:k+260] + " | links " + " ; ".join(sorted(set(re.findall(r'href="(/[Ll]eiloes/[^"#]{4,100})"', h)))[:6]))
-    except Exception as e:
-        nota(f"FR cat{cat} erro {e}")
+try:
+    h = http.get(f"{F}/Leiloes/Pesquisar?Categoria=2")
+    k = h.find("IMÓVEIS EM LEILÃO")
+    nota("FR corpo " + re.sub(r"\s+", " ", h[k:k+2200]))
+    i = h.lower().find("carregar mais")
+    nota("FR carregar " + re.sub(r"\s+", " ", h[max(0, i-300):i+300]))
+    js = [u for u in re.findall(r'src="([^"]+\.js[^"]*)"', h) if "freitas" in u or not u.startswith("http")]
+    inl = " ".join(re.findall(r"<script(?![^>]*src)[^>]*>(.*?)</script>", h, re.S))
+    nota("FR ajax " + " ; ".join(sorted(set(re.findall(r"""['"`](/[A-Za-z]+/[A-Za-z/]*(?:Carregar|Lotes|Buscar|Pesquisar|Mais)[^'"`\s]{0,80})['"`]""", inl + h)))[:8]) + " js=" + " ; ".join(js)[:300])
+except Exception as e:
+    import traceback; nota("FR ERRO " + traceback.format_exc()[-400:])
