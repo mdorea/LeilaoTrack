@@ -2,37 +2,27 @@ import re, json
 import coletores as c
 def nota(t): print("::notice::" + t.replace("\n", " %0A ")[:3800])
 http = c.Http(pausa=2.0, timeout=25)
-B = "https://seuimovelbb.com.br"
-try:
-    h = http.get(B + "/catalogo")
-    tok = re.search(r'id="_cppnp"[^>]*>([^<]+)<', h).group(1).strip()
-    base = {"pagina": 1, "categorias": "", "tipoVenda": "", "tipoPagamento": "", "evolua": "", "localidade": "", "minimo": "", "maximo": "", "texto": "", "ordem": 0, "contento": 50, "cppnp": tok}
-    o = json.loads(http.post(B + "/catalogo", base, {"X-Requested-With": "XMLHttpRequest", "Referer": B + "/catalogo"}))
-    cards = o["lista"].split('class="card carta"')[1:]
-    for k in (0, 2):
-        nota(f"BB card{k} texto " + c.texto(cards[k])[:500])
-    k = cards[2].find('class="localidade"')
-    nota("BB card2 html fim " + re.sub(r"\s+", " ", cards[2][k-200:k+1300]))
-    tipos = {}
-    for cd in cards:
-        m = re.search(r'class="tipo"><i[^>]*></i>\s*([^<]+)', cd)
-        tipos[m.group(1).strip() if m else "?"] = tipos.get(m.group(1).strip() if m else "?", 0) + 1
-    nota("BB tipos pag1 " + str(tipos))
-    d = http.get(B + "/imovel/id/12772")
-    t = c.texto(d)
-    i = t.find("Compartilhar")
-    nota("BB det12772 " + t[i:i+900] + " ... FIM: " + t[-600:])
-    nota("BB img " + " ; ".join(sorted(set(re.findall(r'(/imagem/imovel/12772_\d+\.jpg)', d)))[:3]) + " fotos_og=" + str(re.findall(r'og:image" content="([^"]+)', d)[:1]))
-except Exception as e:
-    import traceback; nota("BB ERRO " + traceback.format_exc()[-500:])
 F = "https://www.freitasleiloeiro.com.br"
+H = {"X-Requested-With": "XMLHttpRequest", "Referer": F + "/Leiloes/Pesquisar?Categoria=2"}
+tot = 0; links = []
 try:
-    h = http.get(f"{F}/Leiloes/Pesquisar?Categoria=2")
-    inl = "\n".join(re.findall(r"<script(?![^>]*src)[^>]*>(.*?)</script>", h, re.S))
-    i = inl.find("var pesquisa")
-    nota("FR obj " + re.sub(r"\s+", " ", inl[i:i+700]))
-    r = http.get(F + "/Leiloes/PesquisarLotes?Categoria=2&TipoLoteId=0&PageNumber=1&TopRows=12&ClienteSclId=0", {"X-Requested-With": "XMLHttpRequest", "Referer": F + "/Leiloes/Pesquisar?Categoria=2"})
-    nota("FR resp %dB cards=%d " % (len(r), r.count('class="card')) + re.sub(r"\s+", " ", r[:1800]))
-    nota("FR texto " + c.texto(r)[:900])
+    for p in range(1, 40):
+        r = http.get(F + f"/Leiloes/PesquisarLotes?Categoria=2&TipoLoteId=0&PageNumber={p}&TopRows=12&ClienteSclId=0", H)
+        if "Nenhum lote localizado" in r:
+            nota(f"FR fim na pagina {p}"); break
+        ls = re.findall(r'href="(/Leiloes/LoteDetalhes\?leilaoId=\d+&(?:amp;)?loteNumero=\d+)"', r)
+        novos = [x for x in dict.fromkeys(ls) if x not in links]
+        links += novos
+        if not novos:
+            nota(f"FR sem novos na pagina {p}"); break
+    nota(f"FR total lotes={len(links)} 1o={links[:2]}")
+    for u in (links[0], links[len(links)//2]):
+        d = http.get(F + u.replace("&amp;", "&"))
+        t = c.texto(d)
+        k = t.find("Descrição")
+        nota("FR detalhe " + u + " :: " + t[k:k+1500] if k >= 0 else "FR detalhe sem Descrição :: " + t[:1500])
+    r = http.get(F + "/Leiloes/PesquisarLotes?Categoria=2&TipoLoteId=0&PageNumber=1&TopRows=12&ClienteSclId=0", H)
+    b = r.split('class="cardlote"')[1:3]
+    nota("FR card html " + re.sub(r"\s+", " ", b[1][:3000]))
 except Exception as e:
     import traceback; nota("FR ERRO " + traceback.format_exc()[-500:])
