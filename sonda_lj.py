@@ -1,33 +1,34 @@
 import re
 import coletores as c
 def nota(t): print("::notice::" + t.replace("\n", " %0A ")[:3800])
-SITES = {
- "Sold": "https://www.sold.com.br",
- "Sato": "https://satoleiloes.com.br",
- "Freitas": "https://www.freitasleiloeiro.com.br",
- "Bradesco": "https://vitrinebradesco.com.br",
- "Itau": "https://www.itau.com.br/leiloes-imoveis/",
- "Santander": "https://www.santanderimoveis.com.br",
- "BB": "https://seuimovelbb.com.br",
-}
-for nome, url in SITES.items():
+try:
     http = c.Http(pausa=2.0, timeout=25)
-    out = [nome]
-    base = re.match(r"https?://[^/]+", url).group(0)
-    try:
-        r = http.get(base + "/robots.txt")
-        dis = [l.strip() for l in r.splitlines() if re.match(r"(?i)(user-agent|disallow|crawl-delay)", l.strip())][:14]
-        out.append("ROBOTS " + " | ".join(dis)[:500])
-    except Exception as e:
-        out.append("ROBOTS erro " + str(e)[:80])
-    try:
-        h = http.get(url)
-        t = c.texto(h)
-        out.append(f"HOME {len(h)}B anti-robo={bool(re.search(r'captcha|radware|just a moment|cf-chl|access denied', h, re.I))} imoveis={len(re.findall(r'(?i)im[óo]vel|im[óo]veis', t))} titulo={re.search(r'<title>(.*?)</title>', h, re.S).group(1).strip()[:80] if re.search(r'<title>', h) else ''}")
-        links = sorted(set(re.findall(r'href="([^"#]*(?:imove|lote|leilao|detalhe|oferta|venda)[^"#]*)"', h, re.I)))[:12]
-        out.append("LINKS " + " ; ".join(links)[:500])
-    except c.Bloqueado as e:
-        out.append("BLOQUEADO " + str(e))
-    except Exception as e:
-        out.append("HOME erro " + str(e)[:100])
-    nota(" || ".join(out))
+    B = "https://seuimovelbb.com.br"
+    h = http.get(B)
+    cat = sorted(set(re.findall(r'href="(/catalogo[^"]*)"', h)))[:15]
+    nota("BB catalogo " + " ; ".join(cat))
+    i = h.find("/imovel/id/10470")
+    nota("BB card " + re.sub(r"\s+", " ", h[max(0, i-700):i+900]))
+    d = http.get(B + "/imovel/id/10470")
+    t = c.texto(d)
+    nota("BB detalhe " + t[:2200])
+    pg = re.findall(r'(?:pagina|page|p)=\d+', h)[:6]
+    nota("BB paginacao " + str(pg) + " total_ids=" + str(len(set(re.findall(r"/imovel/id/(\d+)", h)))))
+except Exception as e:
+    import traceback; nota("BB ERRO " + traceback.format_exc()[-800:])
+try:
+    F = "https://www.freitasleiloeiro.com.br"
+    h = http.get(F + "/Leiloes/Pesquisar?Categoria=1&TipoLoteId=1")
+    t = c.texto(h)
+    nota("FR lista %dB " % len(h) + t[:1500])
+    nota("FR links " + " ; ".join(sorted(set(re.findall(r'href="(/[^"#]*(?:Lote|lote|Detalhe)[^"#]*)"', h)))[:10]))
+    h0 = http.get(F)
+    nota("FR menu " + " ; ".join(sorted(set(re.findall(r'href="(/Leiloes/Pesquisar[^"]*)"[^>]*>([^<]{0,40})', h0)))[:0] or [f"{a}={b.strip()}" for a, b in re.findall(r'href="(/Leiloes/Pesquisar[^"]*)"[^>]*>\s*([^<]{0,40})', h0)][:12]))
+except Exception as e:
+    import traceback; nota("FR ERRO " + traceback.format_exc()[-800:])
+try:
+    S = "https://satoleiloes.com.br"
+    h = http.get(S)
+    nota("SATO links " + " ; ".join(sorted(set(re.findall(r'href="([^"#]{4,90})"', h)))[:40]))
+except Exception as e:
+    nota("SATO ERRO " + str(e)[:200])
