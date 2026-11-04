@@ -1103,27 +1103,45 @@ def _freitas_numero(s):
     return _num_br(s)
 
 
+def _sem_acento(x):
+    import unicodedata
+    return "".join(ch for ch in unicodedata.normalize("NFD", x or "") if unicodedata.category(ch) != "Mn").lower().strip()
+
+
+def _titulo_br(x):
+    peq = {"de", "da", "do", "das", "dos", "e"}
+    return " ".join(w.lower() if (i and w.lower() in peq) else w.capitalize() for i, w in enumerate((x or "").split()))
+
+
 def freitas_montar(c, det):
     desc = det.get("desc") or c["desc"]
     m = re.match(r"\s*([^.\-/]{2,50}?)\s*[-/]\s*([A-Z]{2})\b[\s.\-:]*(.*)$", desc, re.S)
+    if m and (re.match(_RUA_RX + r"\b", m.group(1).strip()) or len(m.group(1).strip()) > 40 or re.search(r"\d", m.group(1))):
+        m = None  # o começo do texto é um endereço, não "Cidade-UF"
     cidade, uf, resto = (m.group(1).strip(), m.group(2), m.group(3)) if m else ("", "", desc)
-    if not uf:
-        mm = re.match(r"([^/]+)/([A-Z]{2})", c["loc"] or "")
-        if mm:
-            cidade, uf = mm.group(1).title(), mm.group(2)
+    mm = re.match(r"([^/]+)/([A-Z]{2})", c["loc"] or "")
+    if mm:  # a cidade do cartão é o campo estruturado; o texto só empresta os acentos
+        c_loc = mm.group(1).strip()
+        if not (cidade and _sem_acento(cidade) == _sem_acento(c_loc)):
+            cidade = _titulo_br(c_loc) if c_loc.isupper() or c_loc == c_loc.upper() else c_loc
+        uf = uf or mm.group(2)
+        if _sem_acento(cidade) == "capital":
+            cidade = "São Paulo"
     prot = re.sub(r"\b(Pq|Jd|Vl|Av|Al|Tv|Rod|Est|Sr|Dr|Dra|Pç|Lt|Qd|Ap|Apto|Cj|Res|Conj|Prof|Eng|Cel|Gen|Mal|Pres|Sta|Sto|Ex)\.\s", lambda m: m.group(1) + "\x00 ", resto)
     frases = [x.replace("\x00", ".").strip() for x in re.split(r"(?<=[a-zç0-9)])\.\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])", prot) if x.strip()]
     bairro = ""
-    if frases and not re.match(_RUA_RX + r"\b", frases[0]) and len(frases[0]) <= 40 and not re.search(r"\d", frases[0]):
+    if m and frases and not re.search(_RUA_RX + r"\b", frases[0]) and "," not in frases[0] and len(frases[0]) <= 40 and not re.search(r"\d", frases[0]):
         bairro = re.sub(r"^(Bairro|B\.)\s+", "", frases[0]).strip(" .")
         bairro = re.sub(r"^Pq\.\s*", "Parque ", bairro)
         bairro = re.sub(r"^Jd\.\s*", "Jardim ", bairro)
         bairro = re.sub(r"^Vl\.\s*", "Vila ", bairro)
     rua = ""
-    mr = re.search(r"(" + _RUA_RX + r"\s+[^,.;()\d]{2,60}(?:,\s*(?:n[º°o]\.?\s*)?\d+[A-Za-z]?)?)", resto)
+    mr = re.search(r"(" + _RUA_RX + r"\s+[^,.;()\d]{2,60}(?:,\s*(?:n[º°o]\.?\s*)?\d+[A-Za-z]?)?)", prot)
     if mr:
-        rua = re.sub(r"^R\.\s*", "Rua ", re.sub(r"^Av\.?\s+", "Avenida ", mr.group(1).strip(" ,.")))
+        rua = mr.group(1).replace("\x00", ".").strip(" ,.“”\"")
+        rua = re.sub(r"^R\.\s*", "Rua ", re.sub(r"^Av\.?\s+", "Avenida ", rua))
         rua = re.sub(r",\s*n[º°o]\.?\s*", ", ", rua)
+        rua = re.split(r"\s+-\s+", re.sub(r",(?=\d)", ", ", re.sub(r"\s+", " ", rua)))[0].strip(" -")
     ar = areas_de(desc)
     mc = re.search(r"constr\.?\s*(?:de\s*)?" + _NUM + _M2, desc, re.I)
     mt = re.search(r"terr\.?\s*(?:de\s*)?" + _NUM + _M2, desc, re.I)
@@ -1141,7 +1159,7 @@ def freitas_montar(c, det):
     area = ar.get("area_constr") or (ar.get("area_terreno") if tipo == "Terreno" else None)
     rotulo = tipo
     mt2 = re.search(r"\b(Sobrado|Cobertura|Kitnet|Flat|Studio|Galp[ãa]o|Sala|Loja|Conjunto comercial|Fazenda|S[íi]tio|Ch[áa]cara|Terreno|Lote)\b", desc[:300], re.I)
-    if mt2 and tipo in ("Casa", "Apartamento", "Comercial", "Galpão", "Rural", "Terreno"):
+    if mt2 and tipo in ("Casa", "Apartamento", "Comercial", "Galpão", "Rural"):
         rotulo = mt2.group(1).capitalize() if tipo != "Comercial" else mt2.group(1).capitalize()
     if tipo == "Outros":
         rotulo = "Imóvel"
