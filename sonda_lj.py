@@ -1,28 +1,13 @@
-import re, json
+import json, collections
 import coletores as c
 def nota(t): print("::notice::" + t.replace("\n", " %0A ")[:3800])
-http = c.Http(pausa=2.0, timeout=25)
-F = "https://www.freitasleiloeiro.com.br"
-H = {"X-Requested-With": "XMLHttpRequest", "Referer": F + "/Leiloes/Pesquisar?Categoria=2"}
-tot = 0; links = []
+logs = []
 try:
-    for p in range(1, 40):
-        r = http.get(F + f"/Leiloes/PesquisarLotes?Categoria=2&TipoLoteId=0&PageNumber={p}&TopRows=12&ClienteSclId=0", H)
-        if "Nenhum lote localizado" in r:
-            nota(f"FR fim na pagina {p}"); break
-        ls = re.findall(r'href="(/Leiloes/LoteDetalhes\?leilaoId=\d+&(?:amp;)?loteNumero=\d+)"', r)
-        novos = [x for x in dict.fromkeys(ls) if x not in links]
-        links += novos
-        if not novos:
-            nota(f"FR sem novos na pagina {p}"); break
-    nota(f"FR total lotes={len(links)} 1o={links[:2]}")
-    for u in (links[0], links[len(links)//2]):
-        d = http.get(F + u.replace("&amp;", "&"))
-        t = c.texto(d)
-        k = t.find("Descrição")
-        nota("FR detalhe " + u + " :: " + t[k:k+1500] if k >= 0 else "FR detalhe sem Descrição :: " + t[:1500])
-    r = http.get(F + "/Leiloes/PesquisarLotes?Categoria=2&TipoLoteId=0&PageNumber=1&TopRows=12&ClienteSclId=0", H)
-    b = r.split('class="cardlote"')[1:3]
-    nota("FR card html " + re.sub(r"\s+", " ", b[1][:3000]))
+    lotes, ok = c.coletar_freitas(c.Http(pausa=2.0), logs.append, anteriores={})
+    nota(f"TOTAL {len(lotes)} ok={ok} | " + " | ".join(logs) + " | " + str(dict(collections.Counter(l["tipo"] for l in lotes))))
+    nota("SEM rua=%d bairro=%d cidade=%d uf=%d imagem=%d encerra=%d 2pracas=%d area=%d" % tuple(
+        [sum(not l[k] for l in lotes) for k in ("endereco","bairro","cidade","uf","imagem")] + [sum(not l["encerra"] for l in lotes), sum(len(l["pracas"]) > 1 for l in lotes), sum(bool(l.get("area")) for l in lotes)]))
+    nota("TITULOS " + " || ".join(f'{l["titulo"]} [{l["valor"]}, {l["desconto"]}%, {l["encerra"]}, {l["ocupacao"]}]' for l in lotes[:25]))
+    nota("TITULOS2 " + " || ".join(l["titulo"] for l in lotes[25:80]))
 except Exception as e:
-    import traceback; nota("FR ERRO " + traceback.format_exc()[-500:])
+    import traceback; nota("ERRO " + traceback.format_exc()[-1200:])

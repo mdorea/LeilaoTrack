@@ -26,7 +26,7 @@ const Admin = (() => {
 <<<<<<< HEAD
       : `Oi, ${nome}! Você foi convidado para o LeilãoTrack, que reúne os leilões de imóveis da Frazão, Zuk, Mega, Biasi e Lance Judicial num lugar só.\n\nAbra este link para criar sua senha:\n${link}\n\nSeu código: ${codigo} (vale por 7 dias, use com o e-mail ${email}).`;
 =======
-      : `Oi, ${nome}! Você foi convidado para o LeilãoTrack, que reúne os leilões de imóveis da Frazão, Zuk, Mega, Biasi e Grupo Lance num lugar só.\n\nAbra este link para criar sua senha:\n${link}\n\nSeu código: ${codigo} (vale por 7 dias, use com o e-mail ${email}).`;
+      : `Oi, ${nome}! Você foi convidado para o LeilãoTrack, que reúne os leilões de imóveis da Frazão, Zuk, Mega, Biasi, Grupo Lance e Freitas num lugar só.\n\nAbra este link para criar sua senha:\n${link}\n\nSeu código: ${codigo} (vale por 7 dias, use com o e-mail ${email}).`;
 >>>>>>> main
     $("#adm-codigo").innerHTML = `<div class="codigo-box"><div class="texto-ajuda"><b>${esc(titulo)}</b> para ${esc(nome)} · vale até ${esc(new Date(expira).toLocaleString("pt-BR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}))}</div>
       <div class="cod">${esc(codigo)}</div>
