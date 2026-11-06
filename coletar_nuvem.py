@@ -506,6 +506,10 @@ def main():
                 l["cidade"] = g
                 l["titulo"] = l["titulo"].replace(f" - {velho} - ", f" - {g} - ")
                 l["end_maps"] = (l.get("end_maps") or "").replace(velho, g)
+    # rede de segurança: nada com cara de veículo entra no site (já houve um carro anunciado como "casa")
+    for k in [k for k, l in lotes.items() if l.get("site") in ("Lance Judicial", "Freitas") and coletores.nao_e_imovel(l.get("titulo", ""))
+              and coletores._VEICULO.search(l.get("titulo", ""))]:
+        del lotes[k]
     # tira os tipos que você não quer acompanhar (config.json > tipos_excluidos)
     excluir = set(CFG.get("tipos_excluidos", []))
     for i in [i for i, l in lotes.items() if l.get("tipo") in excluir]:

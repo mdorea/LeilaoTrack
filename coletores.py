@@ -840,6 +840,15 @@ def _lj_rua(s):
     return s
 
 
+_VEICULO = re.compile(r"\bano\s*\d{4}\s*/\s*\d{4}\b|\b(ve[ií]culos?|autom[óo]vel|motocicleta|moto\b|caminh[ãa]o|caminhonete|reboque|chassi|renavam|placa|sucata|[ôo]nibus|trator|embarca[çc][ãa]o|jet\s?ski)\b|\b(fiat|volkswagen|vw|chevrolet|gm|ford|honda|toyota|hyundai|renault|yamaha|nissan|jeep|peugeot|citro[ëe]n|mitsubishi|kia|bmw|mercedes|scania|volvo)\b", re.I)
+_IMOVEL = re.compile(r"\b(casas?|sobrados?|apartamentos?|apto|cobertura|kitnet|flat|studio|im[óo]vel|im[óo]veis|terrenos?|lotes?|gal[põo]es?|salas?|lojas?|pr[ée]dio|s[íi]tio|ch[áa]cara|fazenda|gleba|[áa]rea|conjunto|barrac[ãa]o|galp[ãa]o|vaga|garagem|dep[óo]sito|quarto|quartos|su[íi]tes?|m[²2])\b", re.I)
+
+
+def nao_e_imovel(texto_titulo):
+    t = texto_titulo or ""
+    return bool(_VEICULO.search(t)) or not _IMOVEL.search(t)
+
+
 def lj_parse_lista(html, cat):
     """Cartões da lista de uma categoria (casas/apartamentos): link, título, valor, praças, judicial/extrajudicial."""
     ordem = []
@@ -996,7 +1005,7 @@ def coletar_lancejudicial(http, log, anteriores=None, limite=4000, completo=True
         if esperado.get(cat) and n < esperado[cat] * 0.9:
             ok = False
     agora = datetime.now().strftime("%Y-%m-%dT%H:%M")
-    lotes, feitos, comprei = [], 0, 0
+    lotes, feitos, comprei, fora = [], 0, 0, 0
     for lid, c in achados.items():
         id_ = f"lj:{lid}"
         ant = anteriores.get(id_) or {}
@@ -1014,6 +1023,9 @@ def coletar_lancejudicial(http, log, anteriores=None, limite=4000, completo=True
         det = det or {}
         if det.get("comprei"):
             comprei += 1
+            continue
+        if nao_e_imovel(c["titulo_site"] + " " + c["url"].rsplit("/", 1)[-1].replace("-", " ")):
+            fora += 1
             continue
         titulo, tipo, bairro, cidade, uf, area = lj_titulo(c["titulo_site"], c["cat"], det.get("rua", ""), det.get("bairro", ""))
         cidade = det.get("cidade") or cidade
@@ -1043,7 +1055,7 @@ def coletar_lancejudicial(http, log, anteriores=None, limite=4000, completo=True
         if len(pracas) == 1 and det.get("av") and pracas[0]["valor"] and pracas[0]["valor"] < det["av"]:
             l["desconto"] = round((1 - pracas[0]["valor"] / det["av"]) * 100)
         lotes.append(finalizar(l))
-    log(f"Lance Judicial: {len(lotes)} lotes ({comprei} do Comprei/PGFN ignorados), {feitos} páginas de detalhe")
+    log(f"Lance Judicial: {len(lotes)} lotes ({comprei} do Comprei/PGFN e {fora} que não são imóvel ignorados), {feitos} páginas de detalhe")
     return lotes, ok and bool(achados)
 
 
@@ -1214,6 +1226,8 @@ def coletar_freitas(http, log, anteriores=None, limite=4000, completo=True):
                 log(f"Freitas: falha no lote {k}: {e}")
         det = det or {}
         mo = freitas_montar(c, det)
+        if _VEICULO.search(c["desc"] or "") or mo["tipo"] == "Veículo":
+            continue
         pracas = c["pracas"] or ([{"nome": "Praça única", "data": c["data"], "valor": c["valor"]}] if c["valor"] else [])
         if not pracas:
             continue
