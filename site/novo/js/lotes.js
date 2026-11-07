@@ -526,6 +526,8 @@ function blocoItbi(l) {
 }
 /* ---------------- minhas anotações e PDFs (só quem está logado vê, só nos favoritos) ---------------- */
 const ICO_NOTA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v9l-6 6H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 20v-5a1 1 0 0 1 1-1h5M8 9h8M8 13h4"/></svg>';
+const ICO_LOCK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const ICO_CLIP = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L15 7"/></svg>';
 const ICO_PDF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
 const tamanhoTxt = b => b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
 function listaAnexos(id) {
@@ -534,16 +536,18 @@ function listaAnexos(id) {
 }
 function blocoNotas(l) {  // devolve só o miolo; o #notas-wrap fica na ficha
   if (!CONTA.perfil) return "";
-  const cab = '<div class="sec">Minhas anotações<span>só você vê</span></div>';
-  if (!l.fav) return `${cab}<p class="texto-ajuda" style="margin:0 0 6px">Favorite este imóvel para guardar anotações e PDFs (laudo, perícia, matrícula) nele.</p>`;
-  if (!CONTA.anotOk) return `${cab}<p class="aviso-caixa neutro">As anotações ainda não foram ativadas no banco de dados. Falta rodar o SQL novo no Supabase.</p>`;
-  return `${cab}<div class="caixa vidro notas">
-    <textarea id="nota-txt" maxlength="5000" rows="4" placeholder="Anote o que descobriu: pontos da perícia, dívidas, ocupação, ideia de lance...">${esc(CONTA.notas.get(l.id) || "")}</textarea>
-    <div class="nota-estado texto-ajuda" id="nota-estado" aria-live="polite">Salva sozinha enquanto você escreve</div>
+  const cab = n => `<div class="notas-cab"><span class="notas-tit">${ICO_NOTA}Minhas anotações${n ? `<b class="notas-n">${n}</b>` : ""}</span><span class="notas-priv">${ICO_LOCK}Só você vê</span></div>`;
+  if (!l.fav) return `<div class="notas-card">${cab(0)}<p class="notas-ajuda" style="margin:10px 0 0">Favorite este imóvel (♡ lá embaixo) para guardar anotações e PDFs do laudo, da perícia ou da matrícula.</p></div>`;
+  if (!CONTA.anotOk) return `<div class="notas-card">${cab(0)}<p class="notas-ajuda" style="margin:10px 0 0">As anotações ainda não foram ativadas no banco de dados. Falta rodar o SQL novo no Supabase.</p></div>`;
+  const n = (CONTA.anexos.get(l.id) || []).length;
+  return `<div class="notas-card">${cab(n)}
+    <textarea id="nota-txt" maxlength="5000" rows="5" placeholder="Escreva aqui o que descobriu: pontos da perícia, dívidas, ocupação, ideia de lance...">${esc(CONTA.notas.get(l.id) || "")}</textarea>
+    <div class="nota-estado" id="nota-estado" aria-live="polite">Salva sozinha enquanto você escreve</div>
+    <div class="notas-sub">PDFs do imóvel</div>
     <div id="anexos-lista">${listaAnexos(l.id)}</div>
-    <button type="button" class="btn-mini2 vidro" id="anexo-add" style="width:100%;margin-top:8px">+ Anexar PDF</button>
+    <button type="button" class="anexo-add" id="anexo-add">${ICO_CLIP}Anexar PDF</button>
     <input type="file" id="anexo-arq" accept="application/pdf,.pdf" hidden>
-    <p class="texto-ajuda" style="margin:8px 0 0">Até 10 PDFs de 10 MB por imóvel. Ficam na sua conta e ninguém mais enxerga. Somem sozinhos quando o imóvel sai do site.</p>
+    <p class="notas-ajuda">Até 10 PDFs de 10 MB. Somem sozinhos quando o imóvel sai do site.</p>
   </div>`;
 }
 function ligarNotas(l) {
@@ -559,7 +563,7 @@ function ligarNotas(l) {
   };
   txt.addEventListener("input", () => { pendente = true; estado.textContent = "Digitando..."; clearTimeout(tmr); tmr = setTimeout(salvar, 900); });
   txt.addEventListener("blur", salvar);
-  const refaz = () => { $("#anexos-lista").innerHTML = listaAnexos(l.id); };
+  const refaz = () => { $("#anexos-lista").innerHTML = listaAnexos(l.id); const n = (CONTA.anexos.get(l.id) || []).length; const t = document.querySelector(".notas-tit"); if (t) { t.querySelector(".notas-n")?.remove(); if (n) t.insertAdjacentHTML("beforeend", `<b class="notas-n">${n}</b>`); } };
   $("#anexo-add").addEventListener("click", () => $("#anexo-arq").click());
   $("#anexo-arq").addEventListener("change", async e => {
     const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
@@ -570,7 +574,7 @@ function ligarNotas(l) {
     const b = $("#anexo-add"); b.disabled = true; b.textContent = "Enviando...";
     try { await CONTA.anexarPdf(l.id, f); refaz(); toast("PDF anexado"); }
     catch (er) { toast(er && er.status === 413 ? "PDF grande demais: o limite é 10 MB" : "Não consegui enviar o PDF agora. Tente de novo."); }
-    finally { b.disabled = false; b.textContent = "+ Anexar PDF"; }
+    finally { b.disabled = false; b.innerHTML = ICO_CLIP + "Anexar PDF"; }
   });
   $("#anexos-lista").addEventListener("click", async e => {
     const ab = e.target.closest("[data-abrir]"), del = e.target.closest("[data-del]");
@@ -612,9 +616,9 @@ function abrirLote(id) {
       <div class="sep"></div>
       <div class="r rot"><span>${l.encerra ? "Leilão " + esc(fmtData(l.encerra)) : ""}</span><span style="color:var(--acc2);font-weight:600">${esc(falta(l.encerra))}</span></div>
     </div>
+    <div id="notas-wrap">${blocoNotas(l)}</div>
     ${blocoEstimativa(l)}
     ${blocoItbi(l)}
-    <div id="notas-wrap">${blocoNotas(l)}</div>
     ${t ? `<div class="sec">Por que está no seu Top 15 (#${t.pos})</div><ul class="top-motivos">${t.motivos.map(m => `<li>${esc(m)}</li>`).join("")}${t.alertas.map(m => `<li style="color:var(--hot)">Atenção: ${esc(m)}</li>`).join("")}</ul>` : ""}
     ${pr ? `<div class="sec">Praças</div><div class="linhas">${pr}</div>` : ""}
     <div class="sec">Detalhes</div><div class="linhas">${linhas.map(([a, b]) => `<div><span>${a}</span><span>${esc(b)}</span></div>`).join("")}</div>

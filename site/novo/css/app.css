@@ -546,14 +546,25 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .aviso-saiu{margin:1px 0 3px;font-size:10.5px;font-weight:500;color:var(--mu);line-height:1.3}
 
 /* anotações e PDFs nos favoritos */
-.notas textarea{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid var(--line);background:var(--glass);padding:10px 12px;font-size:14.5px;line-height:1.4;outline:0;color:var(--tx);min-height:96px;resize:vertical;font-family:inherit}
-.notas textarea:focus{border-color:var(--acc)}
-.nota-estado{margin:4px 0 8px;min-height:16px}
-.anexo{display:flex;align-items:stretch;gap:6px;margin-top:6px}
-.anexo-abrir{flex:1;min-width:0;display:flex;align-items:center;gap:8px;text-align:left;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:var(--glass);color:var(--tx);font-size:13.5px;font-weight:600}
-.anexo-abrir svg{flex:none;color:var(--acc2)}
+.notas-card{border-radius:18px;padding:14px;margin-bottom:12px;background:color-mix(in srgb,var(--acc) 9%,var(--glass2));border:1.5px solid color-mix(in srgb,var(--acc) 38%,transparent);box-shadow:var(--shadow)}
+.notas-cab{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.notas-tit{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--tx)}
+.notas-tit svg{color:var(--acc)}
+.notas-n{background:var(--acc);color:#fff;border-radius:10px;font-size:11px;min-width:20px;height:20px;display:inline-grid;place-items:center;padding:0 6px}
+.notas-priv{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--mu);padding:4px 9px;border-radius:999px;background:color-mix(in srgb,var(--tx) 7%,transparent);white-space:nowrap}
+.notas-card textarea{width:100%;display:block;border-radius:13px;border:1.5px solid color-mix(in srgb,var(--tx) 18%,transparent);background:color-mix(in srgb,var(--tx) 6%,transparent);padding:12px 13px;font-size:15px;line-height:1.45;outline:0;color:var(--tx);min-height:120px;resize:vertical;font-family:inherit}
+.notas-card textarea::placeholder{color:var(--mu2)}
+.notas-card textarea:focus{border-color:var(--acc);background:color-mix(in srgb,var(--tx) 3%,transparent)}
+.nota-estado{margin:6px 2px 12px;min-height:16px;font-size:12px;color:var(--mu)}
+.notas-sub{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--mu)}
+.anexo{display:flex;align-items:stretch;gap:6px;margin-top:8px}
+.anexo-abrir{flex:1;min-width:0;display:flex;align-items:center;gap:9px;text-align:left;padding:11px 12px;border-radius:12px;border:1px solid color-mix(in srgb,var(--tx) 14%,transparent);background:color-mix(in srgb,var(--tx) 6%,transparent);color:var(--tx);font-size:13.5px;font-weight:600}
+.anexo-abrir svg{flex:none;color:var(--acc)}
 .anexo-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .anexo-abrir small{flex:none;color:var(--mu);font-weight:500}
-.anexo-del{flex:none;width:40px;border-radius:12px;border:1px solid var(--line);background:var(--glass);color:var(--mu);font-size:20px;line-height:1}
+.anexo-del{flex:none;width:42px;border-radius:12px;border:1px solid color-mix(in srgb,var(--tx) 14%,transparent);background:color-mix(in srgb,var(--tx) 6%,transparent);color:var(--mu);font-size:21px;line-height:1}
+.anexo-add{width:100%;height:46px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:13px;border:1.5px dashed var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent);color:var(--acc);font-size:14.5px;font-weight:700}
+.anexo-add:disabled{opacity:.6}
+.notas-ajuda{margin:10px 0 0;font-size:11.5px;line-height:1.4;color:var(--mu)}
 .tem-nota{position:absolute;right:40px;top:34px;width:30px;height:30px;display:grid;place-items:center;color:var(--acc2)}
 .card:has(.tem-nota) .tit{padding-right:62px}
