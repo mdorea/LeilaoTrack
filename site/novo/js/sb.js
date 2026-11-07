@@ -137,6 +137,10 @@ const SB = (() => {
       if (!r.ok) { let j = {}; try { j = await r.json(); } catch (e) {} throw new Erro(String(j.message || j.error || ("Erro " + r.status)), r.status); }
     },
     apagarPdf: caminho => pedir("/storage/v1/object/anexos/" + caminho.split("/").map(enc).join("/"), {metodo: "DELETE"}),
+    async baixarPdf(caminho) {
+      const r = await pedir("/storage/v1/object/authenticated/anexos/" + caminho.split("/").map(enc).join("/"), {bruto: true});
+      return r.arrayBuffer();
+    },
     // link que vale 60 segundos, só para abrir o PDF numa nova aba
     async linkPdf(caminho) {
       const j = await pedir("/storage/v1/object/sign/anexos/" + caminho.split("/").map(enc).join("/"), {metodo: "POST", corpo: {expiresIn: 60}});

@@ -532,7 +532,7 @@ const ICO_PDF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" str
 const tamanhoTxt = b => b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
 function listaAnexos(id) {
   const a = CONTA.anexos.get(id) || [];
-  return a.map(x => `<div class="anexo"><button type="button" class="anexo-abrir" data-abrir="${esc(x.id)}" title="Abrir o PDF">${ICO_PDF}<span class="anexo-nome">${esc(x.nome)}</span><small>${tamanhoTxt(x.tamanho)}</small></button><button type="button" class="anexo-del" data-del="${esc(x.id)}" aria-label="Remover ${esc(x.nome)}" title="Remover">×</button></div>`).join("");
+  return a.map(x => `<div class="anexo"><button type="button" class="anexo-abrir" data-abrir="${esc(x.id)}" title="Ver o PDF">${ICO_PDF}<span class="anexo-nome">${esc(x.nome)}</span><small>${tamanhoTxt(x.tamanho)}</small></button><button type="button" class="anexo-del" data-del="${esc(x.id)}" aria-label="Remover ${esc(x.nome)}" title="Remover">×</button></div>`).join("");
 }
 function blocoNotas(l) {  // devolve só o miolo; o #notas-wrap fica na ficha
   if (!CONTA.perfil) return "";
@@ -550,6 +550,62 @@ function blocoNotas(l) {  // devolve só o miolo; o #notas-wrap fica na ficha
     <p class="notas-ajuda">Até 10 PDFs de 10 MB. Somem sozinhos quando o imóvel sai do site.</p>
   </div>`;
 }
+/* visualizador de PDF dentro do site (pdf.js, sem iframe nem baixar), com opção de baixar */
+const _pdf = {doc: null, buf: null, nome: "", zoom: 1, obs: null, token: 0, lote: null};
+async function abrirPdf(l, a) {
+  const corpo = $("#pdf-corpo"); const meu = ++_pdf.token;
+  _pdf.lote = l; _pdf.nome = a.nome; _pdf.zoom = 1; _pdf.doc = null; _pdf.buf = null;
+  $("#pdf-nome").textContent = a.nome;
+  corpo.innerHTML = '<p class="texto-ajuda" style="text-align:center;margin:40px 0">Abrindo o PDF...</p>';
+  abrir("#folha-pdf");
+  try {
+    await carregarScript("vendor/pdf.js"); window.pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdf.worker.js";
+    const buf = await SB.baixarPdf(a.caminho); if (meu !== _pdf.token) return;
+    _pdf.buf = buf;
+    _pdf.doc = await pdfjsLib.getDocument({data: new Uint8Array(buf.slice(0)), isEvalSupported: false, enableXfa: false}).promise;
+    if (meu !== _pdf.token) return;
+    desenharPdf(meu);
+  } catch (e) {
+    if (meu !== _pdf.token) return;
+    corpo.innerHTML = '<p class="aviso-caixa ruim">Não consegui mostrar este PDF aqui. Toque em Baixar para abrir no seu aparelho.</p>';
+  }
+}
+async function desenharPdf(meu) {
+  const corpo = $("#pdf-corpo"), doc = _pdf.doc; if (!doc) return;
+  if (_pdf.obs) _pdf.obs.disconnect();
+  corpo.innerHTML = ""; const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const larg = Math.max(220, (corpo.clientWidth - 40)) * _pdf.zoom;
+  const pags = [];
+  const p1 = await doc.getPage(1);
+  for (let n = 1; n <= doc.numPages; n++) {
+    const c = document.createElement("canvas"); c.className = "pdf-pag"; c.dataset.n = n;
+    const v = p1.getViewport({scale: 1}); c.style.width = larg + "px"; c.style.height = (larg * v.height / v.width) + "px";
+    corpo.appendChild(c); pags.push(c);
+  }
+  const fazer = async c => {
+    if (c.dataset.ok) return; c.dataset.ok = "1";
+    const pg = await doc.getPage(+c.dataset.n); const v0 = pg.getViewport({scale: 1}); const esc1 = larg / v0.width;
+    const v = pg.getViewport({scale: esc1 * dpr}); c.width = v.width; c.height = v.height;
+    c.style.width = larg + "px"; c.style.height = (larg * v0.height / v0.width) + "px";
+    await pg.render({canvasContext: c.getContext("2d"), viewport: v}).promise;
+  };
+  _pdf.obs = new IntersectionObserver(es => { if (meu !== _pdf.token) return; es.forEach(e => { if (e.isIntersecting) fazer(e.target).catch(() => {}); }); }, {root: corpo, rootMargin: "600px 0px"});
+  pags.forEach(c => _pdf.obs.observe(c));
+}
+function ligarPdf() {
+  if (ligarPdf.ok) return; ligarPdf.ok = true;
+  $("#pdf-voltar").addEventListener("click", () => { _pdf.token++; if (_pdf.obs) _pdf.obs.disconnect(); $("#pdf-corpo").innerHTML = ""; _pdf.doc = null; abrirLote(_pdf.lote.id); });
+  const zoom = d => { if (!_pdf.doc) return; _pdf.zoom = Math.min(3, Math.max(.6, _pdf.zoom + d)); desenharPdf(_pdf.token); };
+  $("#pdf-mais").addEventListener("click", () => zoom(.4));
+  $("#pdf-menos").addEventListener("click", () => zoom(-.4));
+  $("#pdf-baixar").addEventListener("click", () => {
+    if (!_pdf.buf) { toast("O PDF ainda está carregando"); return; }
+    const url = URL.createObjectURL(new Blob([_pdf.buf], {type: "application/pdf"}));
+    const a = document.createElement("a"); a.href = url; a.download = /\.pdf$/i.test(_pdf.nome) ? _pdf.nome : _pdf.nome + ".pdf";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+  });
+}
+ligarPdf();
 function ligarNotas(l) {
   const txt = $("#nota-txt"); if (!txt) return;
   const estado = $("#nota-estado");
@@ -581,9 +637,7 @@ function ligarNotas(l) {
     const lista = CONTA.anexos.get(l.id) || [];
     if (ab) {
       const a = lista.find(x => x.id === ab.dataset.abrir); if (!a) return;
-      const w = window.open("", "_blank");   // abre já, no toque, para o navegador não bloquear
-      try { const url = await SB.linkPdf(a.caminho); if (w) { w.location.href = url; } else location.href = url; }
-      catch (er) { if (w) w.close(); toast("Não consegui abrir o PDF agora"); }
+      abrirPdf(l, a);
     } else if (del) {
       const a = lista.find(x => x.id === del.dataset.del); if (!a) return;
       if (!confirm(`Remover "${a.nome}" deste imóvel? Não dá para desfazer.`)) return;
