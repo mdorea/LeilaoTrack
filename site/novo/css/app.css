@@ -555,5 +555,5 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .anexo-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .anexo-abrir small{flex:none;color:var(--mu);font-weight:500}
 .anexo-del{flex:none;width:40px;border-radius:12px;border:1px solid var(--line);background:var(--glass);color:var(--mu);font-size:20px;line-height:1}
-.tem-nota{display:inline-grid;place-items:center;color:var(--acc2);margin-right:8px;vertical-align:middle}
-.tem-nota svg{width:15px;height:15px}
+.tem-nota{position:absolute;right:40px;top:34px;width:30px;height:30px;display:grid;place-items:center;color:var(--acc2)}
+.card:has(.tem-nota) .tit{padding-right:62px}

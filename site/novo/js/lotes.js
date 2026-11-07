@@ -243,9 +243,10 @@ function card(l) {
         ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}
         <div class="loc">${esc([l.bairro && !l.titulo.includes(l.bairro) ? l.bairro : "", l.cidade && (l.cidade + (l.uf ? " · " + l.uf : ""))].filter(Boolean).join(" · ") || l.tipo)}</div>
       </div>
-      <div class="baixo"><span class="preco">${l._lance ? `<small class="lance-tag">lance atual</small>` : ""}${fmtBRL(l._preco)}${l._lance ? `<small class="min-praca">lance mínimo ${fmtBRL(l.valor)}</small>` : ""}</span>${l.fav && CONTA.temNotas(l.id) ? `<span class="tem-nota" title="Tem anotação ou PDF seu">${ICO_PDF}</span>` : ""}<span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
+      <div class="baixo"><span class="preco">${l._lance ? `<small class="lance-tag">lance atual</small>` : ""}${fmtBRL(l._preco)}${l._lance ? `<small class="min-praca">lance mínimo ${fmtBRL(l.valor)}</small>` : ""}</span><span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
     </div>
     ${desc > 0 ? `<span class="desc">-${desc}%</span>` : ""}
+    ${l.fav && !S.organizando && CONTA.temNotas(l.id) ? `<span class="tem-nota" title="Você tem anotação ou PDF neste imóvel" aria-label="Tem anotação ou PDF">${ICO_NOTA}</span>` : ""}
     ${S.organizando && S.aba === "favoritos" ? `<span class="alca-arrastar" data-arrastar="${esc(l.id)}" role="button" aria-label="Segure e arraste para mudar a ordem" title="Arraste para mudar a ordem">${ALCA}</span>`
       : `<span class="coracao ${l.fav ? "on" : ""}" data-fav="${esc(l.id)}" role="button" aria-label="Favoritar">${coracao(l.fav)}</span>`}
     ${S.aba !== "favoritos" ? `<span class="ocultar" data-ocultar="${esc(l.id)}" role="button" aria-label="Ocultar este imóvel" title="Ocultar este imóvel">${OLHO_OFF}</span>` : ""}
@@ -524,6 +525,7 @@ function blocoItbi(l) {
   </div>`;
 }
 /* ---------------- minhas anotações e PDFs (só quem está logado vê, só nos favoritos) ---------------- */
+const ICO_NOTA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v9l-6 6H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 20v-5a1 1 0 0 1 1-1h5M8 9h8M8 13h4"/></svg>';
 const ICO_PDF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
 const tamanhoTxt = b => b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
 function listaAnexos(id) {
