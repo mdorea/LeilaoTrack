@@ -123,6 +123,43 @@ def sb_apagar(nomes):
         r.read()
 
 
+def _sb_rest(metodo, caminho, dados=None):
+    req = urllib.request.Request(f"{SB_URL}/rest/v1/{caminho}", method=metodo,
+                                 data=None if dados is None else json.dumps(dados).encode(),
+                                 headers=_sb_headers({"Content-Type": "application/json", "Prefer": "return=minimal"}))
+    with urllib.request.urlopen(req, timeout=60) as r:
+        t = r.read().decode("utf-8")
+    return json.loads(t) if t else None
+
+
+def limpar_anotacoes(ativos):
+    """Anotações e PDFs dos favoritos somem quando o lote sai do site (poupa armazenamento).
+    Só roda com a leitura em bom estado; sem as tabelas criadas no Supabase, não faz nada."""
+    try:
+        linhas = _sb_rest("GET", "anexos?select=id,lote_id,caminho&limit=5000") or []
+        notas = _sb_rest("GET", "anotacoes?select=lote_id&limit=5000") or []
+    except urllib.error.HTTPError as e:
+        log(f"Anotações: ainda sem tabelas no Supabase, nada a limpar ({e.code})")
+        return
+    mortos_a = [a for a in linhas if a["lote_id"] not in ativos]
+    mortos_n = sorted({n["lote_id"] for n in notas if n["lote_id"] not in ativos})
+    if mortos_a:
+        for i in range(0, len(mortos_a), 100):
+            lote = mortos_a[i:i + 100]
+            req = urllib.request.Request(f"{SB_URL}/storage/v1/object/anexos", method="DELETE",
+                                         data=json.dumps({"prefixes": [a["caminho"] for a in lote]}).encode(),
+                                         headers=_sb_headers({"Content-Type": "application/json"}))
+            with urllib.request.urlopen(req, timeout=60) as r:
+                r.read()
+            ids = ",".join(a["id"] for a in lote)
+            _sb_rest("DELETE", "anexos?id=in.(" + urllib.parse.quote(ids, safe=",-") + ")")
+    for i in range(0, len(mortos_n), 50):
+        ids = ",".join('"' + x + '"' for x in mortos_n[i:i + 50])
+        _sb_rest("DELETE", "anotacoes?lote_id=in.(" + urllib.parse.quote(ids, safe=',"') + ")")
+    if mortos_a or mortos_n:
+        log(f"Anotações: removidos {len(mortos_a)} PDFs e anotações de {len(mortos_n)} lotes que saíram do site")
+
+
 NOME_LOTES = re.compile(r"^lotes-[a-f0-9]{32}\.json\.gz$")
 
 
@@ -552,6 +589,12 @@ def main():
             except Exception as e:
                 log(f"Supabase: não apaguei o arquivo antigo ({e})")
             log(f"Supabase: {len(bruto) // 1024} KB publicados no arquivo privado {novo[:14]}…")
+            ativos = {i for i, l in lotes.items() if l.get("ativo")}
+            if len(ativos) >= 500:  # leitura quebrada nunca apaga anotação de ninguém
+                try:
+                    limpar_anotacoes(ativos)
+                except Exception as e:
+                    log(f"Anotações: não consegui limpar desta vez ({_sb_erro(e)})")
         except Exception as e:
             log(f"Supabase: ERRO ao publicar ({_sb_erro(e)})")
             if not CHAVE:

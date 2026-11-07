@@ -541,7 +541,7 @@ function blocoNotas(l) {  // devolve só o miolo; o #notas-wrap fica na ficha
     <div id="anexos-lista">${listaAnexos(l.id)}</div>
     <button type="button" class="btn-mini2 vidro" id="anexo-add" style="width:100%;margin-top:8px">+ Anexar PDF</button>
     <input type="file" id="anexo-arq" accept="application/pdf,.pdf" hidden>
-    <p class="texto-ajuda" style="margin:8px 0 0">Até 10 PDFs de 10 MB por imóvel. Ficam guardados na sua conta e ninguém mais enxerga.</p>
+    <p class="texto-ajuda" style="margin:8px 0 0">Até 10 PDFs de 10 MB por imóvel. Ficam na sua conta e ninguém mais enxerga. Somem sozinhos quando o imóvel sai do site.</p>
   </div>`;
 }
 function ligarNotas(l) {
