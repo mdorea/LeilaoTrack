@@ -128,6 +128,22 @@ const SB = (() => {
       cabecalhos: {Prefer: (modo === "mesclar" ? "resolution=merge-duplicates," : modo === "ignorar" ? "resolution=ignore-duplicates," : "") + "return=minimal"}}),
     atualizar: (tabela, filtro, dados) => pedir(`/rest/v1/${enc(tabela)}?${filtro}`, {metodo: "PATCH", corpo: dados, cabecalhos: {Prefer: "return=minimal"}}),
     apagar: (tabela, filtro) => pedir(`/rest/v1/${enc(tabela)}?${filtro}`, {metodo: "DELETE", cabecalhos: {Prefer: "return=minimal"}}),
+    // PDFs dos favoritos (pasta privada "anexos": cada pessoa só enxerga a própria)
+    async enviarPdf(caminho, arquivo) {
+      const t = await token(); if (!t) throw new Erro("Sua sessão terminou. Entre de novo.", 401, "sem_sessao");
+      const r = await fetch(BASE + "/storage/v1/object/anexos/" + caminho.split("/").map(enc).join("/"), {
+        method: "POST", headers: {apikey: KEY, Authorization: "Bearer " + t, "Content-Type": "application/pdf", "x-upsert": "false"},
+        body: arquivo, cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer", redirect: "error"});
+      if (!r.ok) { let j = {}; try { j = await r.json(); } catch (e) {} throw new Erro(String(j.message || j.error || ("Erro " + r.status)), r.status); }
+    },
+    apagarPdf: caminho => pedir("/storage/v1/object/anexos/" + caminho.split("/").map(enc).join("/"), {metodo: "DELETE"}),
+    // link que vale 60 segundos, só para abrir o PDF numa nova aba
+    async linkPdf(caminho) {
+      const j = await pedir("/storage/v1/object/sign/anexos/" + caminho.split("/").map(enc).join("/"), {metodo: "POST", corpo: {expiresIn: 60}});
+      if (!j || !j.signedURL) throw new Erro("Sem link", 0);
+      const u = String(j.signedURL).replace(/^\/?(storage\/v1)?/, "");
+      return BASE + "/storage/v1/" + u.replace(/^\//, "");
+    },
     async arquivo(nome, sinal) {
       const r = await pedir("/storage/v1/object/authenticated/privado/" + enc(nome), {bruto: true, sinal});
       return r.arrayBuffer();

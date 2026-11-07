@@ -544,3 +544,16 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .det-foto{position:relative}.det-foto.saiu::after{font-size:12px;padding:8px 0;letter-spacing:1.2px}
 .card.saiu .tit,.card.saiu .preco{opacity:.72}
 .aviso-saiu{margin:1px 0 3px;font-size:10.5px;font-weight:500;color:var(--mu);line-height:1.3}
+
+/* anotações e PDFs nos favoritos */
+.notas textarea{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid var(--line);background:var(--glass);padding:10px 12px;font-size:14.5px;line-height:1.4;outline:0;color:var(--tx);min-height:96px;resize:vertical;font-family:inherit}
+.notas textarea:focus{border-color:var(--acc)}
+.nota-estado{margin:4px 0 8px;min-height:16px}
+.anexo{display:flex;align-items:stretch;gap:6px;margin-top:6px}
+.anexo-abrir{flex:1;min-width:0;display:flex;align-items:center;gap:8px;text-align:left;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:var(--glass);color:var(--tx);font-size:13.5px;font-weight:600}
+.anexo-abrir svg{flex:none;color:var(--acc2)}
+.anexo-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anexo-abrir small{flex:none;color:var(--mu);font-weight:500}
+.anexo-del{flex:none;width:40px;border-radius:12px;border:1px solid var(--line);background:var(--glass);color:var(--mu);font-size:20px;line-height:1}
+.tem-nota{display:inline-grid;place-items:center;color:var(--acc2);margin-right:8px;vertical-align:middle}
+.tem-nota svg{width:15px;height:15px}

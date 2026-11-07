@@ -243,7 +243,7 @@ function card(l) {
         ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}
         <div class="loc">${esc([l.bairro && !l.titulo.includes(l.bairro) ? l.bairro : "", l.cidade && (l.cidade + (l.uf ? " · " + l.uf : ""))].filter(Boolean).join(" · ") || l.tipo)}</div>
       </div>
-      <div class="baixo"><span class="preco">${l._lance ? `<small class="lance-tag">lance atual</small>` : ""}${fmtBRL(l._preco)}${l._lance ? `<small class="min-praca">lance mínimo ${fmtBRL(l.valor)}</small>` : ""}</span><span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
+      <div class="baixo"><span class="preco">${l._lance ? `<small class="lance-tag">lance atual</small>` : ""}${fmtBRL(l._preco)}${l._lance ? `<small class="min-praca">lance mínimo ${fmtBRL(l.valor)}</small>` : ""}</span>${l.fav && CONTA.temNotas(l.id) ? `<span class="tem-nota" title="Tem anotação ou PDF seu">${ICO_PDF}</span>` : ""}<span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
     </div>
     ${desc > 0 ? `<span class="desc">-${desc}%</span>` : ""}
     ${S.organizando && S.aba === "favoritos" ? `<span class="alca-arrastar" data-arrastar="${esc(l.id)}" role="button" aria-label="Segure e arraste para mudar a ordem" title="Arraste para mudar a ordem">${ALCA}</span>`
@@ -523,6 +523,68 @@ function blocoItbi(l) {
     </details>
   </div>`;
 }
+/* ---------------- minhas anotações e PDFs (só quem está logado vê, só nos favoritos) ---------------- */
+const ICO_PDF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
+const tamanhoTxt = b => b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
+function listaAnexos(id) {
+  const a = CONTA.anexos.get(id) || [];
+  return a.map(x => `<div class="anexo"><button type="button" class="anexo-abrir" data-abrir="${esc(x.id)}" title="Abrir o PDF">${ICO_PDF}<span class="anexo-nome">${esc(x.nome)}</span><small>${tamanhoTxt(x.tamanho)}</small></button><button type="button" class="anexo-del" data-del="${esc(x.id)}" aria-label="Remover ${esc(x.nome)}" title="Remover">×</button></div>`).join("");
+}
+function blocoNotas(l) {  // devolve só o miolo; o #notas-wrap fica na ficha
+  if (!CONTA.perfil) return "";
+  const cab = '<div class="sec">Minhas anotações<span>só você vê</span></div>';
+  if (!l.fav) return `${cab}<p class="texto-ajuda" style="margin:0 0 6px">Favorite este imóvel para guardar anotações e PDFs (laudo, perícia, matrícula) nele.</p>`;
+  if (!CONTA.anotOk) return `${cab}<p class="aviso-caixa neutro">As anotações ainda não foram ativadas no banco de dados. Falta rodar o SQL novo no Supabase.</p>`;
+  return `${cab}<div class="caixa vidro notas">
+    <textarea id="nota-txt" maxlength="5000" rows="4" placeholder="Anote o que descobriu: pontos da perícia, dívidas, ocupação, ideia de lance...">${esc(CONTA.notas.get(l.id) || "")}</textarea>
+    <div class="nota-estado texto-ajuda" id="nota-estado" aria-live="polite">Salva sozinha enquanto você escreve</div>
+    <div id="anexos-lista">${listaAnexos(l.id)}</div>
+    <button type="button" class="btn-mini2 vidro" id="anexo-add" style="width:100%;margin-top:8px">+ Anexar PDF</button>
+    <input type="file" id="anexo-arq" accept="application/pdf,.pdf" hidden>
+    <p class="texto-ajuda" style="margin:8px 0 0">Até 10 PDFs de 10 MB por imóvel. Ficam guardados na sua conta e ninguém mais enxerga.</p>
+  </div>`;
+}
+function ligarNotas(l) {
+  const txt = $("#nota-txt"); if (!txt) return;
+  const estado = $("#nota-estado");
+  let tmr = null, pendente = false, salvando = Promise.resolve();
+  const salvar = () => {
+    clearTimeout(tmr); if (!pendente) return; pendente = false;
+    const v = txt.value; estado.textContent = "Salvando...";
+    salvando = salvando.then(() => CONTA.salvarNota(l.id, v)).then(
+      () => { if (!pendente) estado.textContent = "Salvo"; },
+      () => { pendente = true; estado.textContent = "Não consegui salvar. Confira a conexão e toque fora do texto para tentar de novo."; });
+  };
+  txt.addEventListener("input", () => { pendente = true; estado.textContent = "Digitando..."; clearTimeout(tmr); tmr = setTimeout(salvar, 900); });
+  txt.addEventListener("blur", salvar);
+  const refaz = () => { $("#anexos-lista").innerHTML = listaAnexos(l.id); };
+  $("#anexo-add").addEventListener("click", () => $("#anexo-arq").click());
+  $("#anexo-arq").addEventListener("change", async e => {
+    const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+    if (f.size > 10485760) { toast("PDF grande demais: o limite é 10 MB"); return; }
+    if ((CONTA.anexos.get(l.id) || []).length >= 10) { toast("Limite de 10 PDFs neste imóvel"); return; }
+    const cab = new Uint8Array(await f.slice(0, 5).arrayBuffer());
+    if (String.fromCharCode(...cab) !== "%PDF-") { toast("Esse arquivo não é um PDF"); return; }
+    const b = $("#anexo-add"); b.disabled = true; b.textContent = "Enviando...";
+    try { await CONTA.anexarPdf(l.id, f); refaz(); toast("PDF anexado"); }
+    catch (er) { toast(er && er.status === 413 ? "PDF grande demais: o limite é 10 MB" : "Não consegui enviar o PDF agora. Tente de novo."); }
+    finally { b.disabled = false; b.textContent = "+ Anexar PDF"; }
+  });
+  $("#anexos-lista").addEventListener("click", async e => {
+    const ab = e.target.closest("[data-abrir]"), del = e.target.closest("[data-del]");
+    const lista = CONTA.anexos.get(l.id) || [];
+    if (ab) {
+      const a = lista.find(x => x.id === ab.dataset.abrir); if (!a) return;
+      const w = window.open("", "_blank");   // abre já, no toque, para o navegador não bloquear
+      try { const url = await SB.linkPdf(a.caminho); if (w) { w.location.href = url; } else location.href = url; }
+      catch (er) { if (w) w.close(); toast("Não consegui abrir o PDF agora"); }
+    } else if (del) {
+      const a = lista.find(x => x.id === del.dataset.del); if (!a) return;
+      if (!confirm(`Remover "${a.nome}" deste imóvel? Não dá para desfazer.`)) return;
+      try { await CONTA.removerPdf(l.id, a); refaz(); toast("PDF removido"); } catch (er) { toast("Não consegui remover agora"); }
+    }
+  });
+}
 function abrirLote(id) {
   const l = S.lotes.find(x => x.id === id); if (!l) return;
   const pr = (Array.isArray(l.pracas) ? l.pracas : []).map(p => `<div class="${p.data && p.data < fmtLocal() ? "praca-passada" : ""}"><span>${esc(pracaCurta(p.nome))} · ${esc(fmtData(p.data))}</span><span>${fmtBRL(p.valor)}</span></div>`).join("");
@@ -550,6 +612,7 @@ function abrirLote(id) {
     </div>
     ${blocoEstimativa(l)}
     ${blocoItbi(l)}
+    <div id="notas-wrap">${blocoNotas(l)}</div>
     ${t ? `<div class="sec">Por que está no seu Top 15 (#${t.pos})</div><ul class="top-motivos">${t.motivos.map(m => `<li>${esc(m)}</li>`).join("")}${t.alertas.map(m => `<li style="color:var(--hot)">Atenção: ${esc(m)}</li>`).join("")}</ul>` : ""}
     ${pr ? `<div class="sec">Praças</div><div class="linhas">${pr}</div>` : ""}
     <div class="sec">Detalhes</div><div class="linhas">${linhas.map(([a, b]) => `<div><span>${a}</span><span>${esc(b)}</span></div>`).join("")}</div>
@@ -571,12 +634,14 @@ function abrirLote(id) {
       await navigator.clipboard.writeText(url); toast("Link copiado. Só abre para quem tem acesso ao grupo");
     } catch (e) { if (e && e.name !== "AbortError") toast("Não consegui copiar o link"); }
   });
+  ligarNotas(l);
   $("#ocultar-lote")?.addEventListener("click", () => { fechar(); ocultarLote(l.id); });
   $("#abrir-calc").addEventListener("click", () => abrirCalc(l));
   $("#abrir-pericia").addEventListener("click", () => { fechar(); trocarAba("pericia"); Pericia.comLote(l); });
   $("#fav-lote").addEventListener("click", async () => {
     const on = await alternarFav(l.id);
     $("#fav-lote").textContent = rotFav(on);
+    { const w = $("#notas-wrap"); if (w) { w.innerHTML = blocoNotas(l); ligarNotas(l); } }
     const c = document.querySelector(`[data-fav="${CSS.escape(l.id)}"]`); if (c) { c.classList.toggle("on", on); c.innerHTML = coracao(on); }
   });
   $("#corpo-lote").scrollTop = 0; abrir("#folha-lote");
