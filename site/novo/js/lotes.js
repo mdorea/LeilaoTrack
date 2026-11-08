@@ -232,26 +232,31 @@ function card(l) {
   const urg = l._enc - Date.now() < 48 * 36e5;
   const t = S.top && S.top.get(l.id);
   const desc = l._desc || 0;
+  const quandoTxt = l.encerra ? esc(fmtData(l.encerra).replace(" às ", " · ")) : "";
+  const local = esc([l.bairro && !l.titulo.includes(l.bairro) ? l.bairro : "", l.cidade && (l.cidade + (l.uf ? " · " + l.uf : ""))].filter(Boolean).join(" · ") || l.tipo);
   return `<button class="card vidro${l.ativo === false ? " saiu" : ""}" data-id="${esc(l.id)}">
-    ${foto(l)}
-    <div class="info">
-      <div>
-        <div class="topo-card">${t ? `<span class="rank">#${t.pos}</span>` : ""}<i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(siteCurto(l.site))}${l.novo ? '<span class="novo">· novo</span>' : ""}</div>
-        ${l.ativo === false ? `<div class="aviso-saiu">${esc(avisoSaiu(l, true) || "Saiu do site")}</div>` : ""}
-        <div class="tit">${esc(l.titulo)}</div>
-        ${t ? `<div class="motivo">${esc(t.motivos.slice(0, 2).join(" · "))}</div>` : ""}
-        ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}
-        <div class="loc">${esc([l.bairro && !l.titulo.includes(l.bairro) ? l.bairro : "", l.cidade && (l.cidade + (l.uf ? " · " + l.uf : ""))].filter(Boolean).join(" · ") || l.tipo)}</div>
+    <div class="c-capa">
+      ${foto(l)}
+      <div class="c-tl">${t ? `<span class="rank">#${t.pos}</span>` : ""}${desc > 0 ? `<span class="desc">-${desc}%</span>` : ""}</div>
+      <div class="c-tr">
+        ${l.fav && !S.organizando && CONTA.temNotas(l.id) ? `<span class="tem-nota" title="Você tem anotação ou PDF neste imóvel" aria-label="Tem anotação ou PDF">${ICO_NOTA}</span>` : ""}
+        ${S.organizando && S.aba === "favoritos" ? `<span class="alca-arrastar" data-arrastar="${esc(l.id)}" role="button" aria-label="Segure e arraste para mudar a ordem" title="Arraste para mudar a ordem">${ALCA}</span>`
+          : `<span class="coracao ${l.fav ? "on" : ""}" data-fav="${esc(l.id)}" role="button" aria-label="Favoritar">${coracao(l.fav)}</span>`}
+        ${S.aba !== "favoritos" ? `<span class="ocultar" data-ocultar="${esc(l.id)}" role="button" aria-label="Ocultar este imóvel" title="Ocultar este imóvel">${OLHO_OFF}</span>` : ""}
       </div>
-      <div class="baixo"><span class="preco">${l._lance ? `<small class="lance-tag">lance atual</small>` : ""}${fmtBRL(l._preco)}${l._lance ? `<small class="min-praca">lance mínimo ${fmtBRL(l.valor)}</small>` : ""}</span><span class="quando ${urg ? "urg" : ""}"><b>${l.encerra ? esc(fmtData(l.encerra).replace(" às ", " · ")) : "—"}</b><small>${esc(pracaCurta(l.praca_atual))}</small></span></div>
+      ${quandoTxt && l.ativo !== false ? `<div class="c-bl ${urg ? "urg" : ""}">${ICO_CAL}<b>${quandoTxt}</b><span>${esc(pracaCurta(l.praca_atual))}</span></div>` : ""}
     </div>
-    ${desc > 0 ? `<span class="desc">-${desc}%</span>` : ""}
-    ${l.fav && !S.organizando && CONTA.temNotas(l.id) ? `<span class="tem-nota" title="Você tem anotação ou PDF neste imóvel" aria-label="Tem anotação ou PDF">${ICO_NOTA}</span>` : ""}
-    ${S.organizando && S.aba === "favoritos" ? `<span class="alca-arrastar" data-arrastar="${esc(l.id)}" role="button" aria-label="Segure e arraste para mudar a ordem" title="Arraste para mudar a ordem">${ALCA}</span>`
-      : `<span class="coracao ${l.fav ? "on" : ""}" data-fav="${esc(l.id)}" role="button" aria-label="Favoritar">${coracao(l.fav)}</span>`}
-    ${S.aba !== "favoritos" ? `<span class="ocultar" data-ocultar="${esc(l.id)}" role="button" aria-label="Ocultar este imóvel" title="Ocultar este imóvel">${OLHO_OFF}</span>` : ""}
+    <div class="info">
+      <div class="topo-card"><i class="dot" style="background:${SITE_COR[l.site] || "#999"}"></i>${esc(siteCurto(l.site))}${l.novo ? '<span class="novo">· novo</span>' : ""}<span class="c-local">${local}</span></div>
+      ${l.ativo === false ? `<div class="aviso-saiu">${esc(avisoSaiu(l, true) || "Saiu do site")}</div>` : ""}
+      <div class="tit">${esc(l.titulo)}</div>
+      ${t ? `<div class="motivo">${esc(t.motivos.slice(0, 2).join(" · "))}</div>` : ""}
+      ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}
+      <div class="baixo"><span class="preco">${fmtBRL(l._preco)}</span><span class="c-rot">${l._lance ? `LANCE ATUAL<small>mínimo ${fmtBRL(l.valor)}</small>` : "LANCE MÍNIMO"}</span></div>
+    </div>
   </button>`;
 }
+const ICO_CAL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
 const OLHO_OFF = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 6.2A9.6 9.6 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6C3.6 9.4 2 12 2 12s3.5 6 10 6a9.6 9.6 0 0 0 4.3-1M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
 const ALCA = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 /* arrastar pela alça (≡) para reordenar os favoritos: funciona com dedo e com mouse */
