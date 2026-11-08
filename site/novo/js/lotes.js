@@ -243,7 +243,7 @@ function card(l) {
         ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}
         <div class="loc">${esc([l.bairro && !l.titulo.includes(l.bairro) ? l.bairro : "", l.cidade && (l.cidade + (l.uf ? " · " + l.uf : ""))].filter(Boolean).join(" · ") || l.tipo)}</div>
       </div>
-      <div class="baixo"><span class="preco">${l._lance ? `<small class="lance-tag">lance atual</small>` : ""}${fmtBRL(l._preco)}${l._lance ? `<small class="min-praca">lance mínimo ${fmtBRL(l.valor)}</small>` : ""}</span><span class="quando ${urg ? "urg" : ""}">${esc(pracaCurta(l.praca_atual))} · ${l.encerra ? esc(fmtData(l.encerra).split(" ")[0]) : "—"}</span></div>
+      <div class="baixo"><span class="preco">${l._lance ? `<small class="lance-tag">lance atual</small>` : ""}${fmtBRL(l._preco)}${l._lance ? `<small class="min-praca">lance mínimo ${fmtBRL(l.valor)}</small>` : ""}</span><span class="quando ${urg ? "urg" : ""}"><b>${l.encerra ? esc(fmtData(l.encerra).replace(" às ", " · ")) : "—"}</b><small>${esc(pracaCurta(l.praca_atual))}</small></span></div>
     </div>
     ${desc > 0 ? `<span class="desc">-${desc}%</span>` : ""}
     ${l.fav && !S.organizando && CONTA.temNotas(l.id) ? `<span class="tem-nota" title="Você tem anotação ou PDF neste imóvel" aria-label="Tem anotação ou PDF">${ICO_NOTA}</span>` : ""}
@@ -668,7 +668,7 @@ function abrirLote(id) {
       : `<div class="r"><div><div class="rot">${esc(pracaCurta(l.praca_atual))} · lance mínimo</div><div class="valor-grande">${fmtBRL(l.valor)}</div></div>${desc > 0 ? `<span class="pill">-${desc}% da 1ª praça</span>` : ""}</div>
       ${(l.lances || 0) > 0 ? `<div class="rot" style="margin-top:4px">${l.lances} lance${l.lances > 1 ? "s" : ""} já dado${l.lances > 1 ? "s" : ""}: confira o valor no site oficial</div>` : ""}`}
       <div class="sep"></div>
-      <div class="r rot"><span>${l.encerra ? "Leilão " + esc(fmtData(l.encerra)) : ""}</span><span style="color:var(--acc2);font-weight:600">${esc(falta(l.encerra))}</span></div>
+      <div class="r encerra-lin"><span>${l.encerra ? `<small>Encerra</small>${esc(fmtData(l.encerra).replace(" às ", " · "))}` : ""}</span><span class="falta">${esc(falta(l.encerra))}</span></div>
     </div>
     <div id="notas-wrap">${blocoNotas(l)}</div>
     ${blocoEstimativa(l)}
