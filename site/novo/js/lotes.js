@@ -252,7 +252,7 @@ function card(l) {
       <div class="tit">${esc(l.titulo)}</div>
       ${t ? `<div class="motivo">${esc(t.motivos.slice(0, 2).join(" · "))}</div>` : ""}
       ${S.ordem === "estimado" && l._est ? `<div class="motivo est-card">${esc(textoDescEst(l._est))} · confiança ${esc(l._est.conf)}</div>` : ""}
-      <div class="baixo"><span class="preco">${fmtBRL(l._preco)}</span><span class="c-rot">${l._lance ? `LANCE ATUAL<small>mínimo ${fmtBRL(l.valor)}</small>` : "LANCE MÍNIMO"}</span></div>
+      <div class="baixo"><span class="preco">${fmtBRL(l._preco)}</span><span class="c-rot">${l._lance ? `Lance atual<small>mínimo ${fmtBRL(l.valor)}</small>` : "Lance mínimo"}</span></div>
     </div>
   </button>`;
 }

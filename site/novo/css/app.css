@@ -606,7 +606,7 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .card .tit{font-size:15.5px;font-weight:700;margin:5px 0 2px;padding:0;line-height:1.3}
 .card .baixo{margin-top:10px;align-items:flex-end}
 .card .preco{font-size:22px;letter-spacing:-.3px}
-.c-rot{display:flex;flex-direction:column;align-items:flex-end;text-align:right;font-size:11px;font-weight:700;letter-spacing:.7px;color:var(--mu);padding-bottom:3px}
+.c-rot{display:flex;flex-direction:column;align-items:flex-end;text-align:right;font-size:12.5px;font-weight:600;color:var(--mu);padding-bottom:3px}
 .c-rot small{font-size:11px;font-weight:500;letter-spacing:0;margin-top:1px}
 .grade.organizando .card .info{padding-right:14px}
 .card.saiu .c-capa .foto{border-radius:0}
