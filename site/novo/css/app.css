@@ -588,7 +588,7 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 
 /* capa do card: foto no topo com os botões sobre ela (opção A) */
 .card{flex-direction:column;gap:0;padding:0;overflow:hidden}
-.c-capa{position:relative;width:100%;height:140px;flex:none}
+.c-capa{position:relative;width:100%;aspect-ratio:16/10;max-height:280px;flex:none}
 .card .c-capa .foto{width:100%;height:100%;border-radius:0}
 .c-tl{position:absolute;left:10px;top:10px;display:flex;gap:6px;align-items:center}
 .c-tl .desc{position:static;font-size:12px;padding:3px 9px}
@@ -610,4 +610,3 @@ body.travado .app,body.travado .nav{filter:blur(14px);pointer-events:none;user-s
 .c-rot small{font-size:11px;font-weight:500;letter-spacing:0;margin-top:1px}
 .grade.organizando .card .info{padding-right:14px}
 .card.saiu .c-capa .foto{border-radius:0}
-@media (min-width:700px){.c-capa{height:160px}}
